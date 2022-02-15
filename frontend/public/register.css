@@ -1,0 +1,39 @@
+h1 {
+  text-align: center;
+}
+
+p {
+  text-align: center;
+}
+
+.inputs {
+  margin: auto;
+  max-width: 30rem;
+}
+
+input {
+  width: 100%;
+  height: 3rem;
+  background-color: var(--background-color);
+  border: solid 1px var(--primary-color);
+  border-radius: 0.5rem;
+  color: var(--primary-color);
+  text-indent: 1rem;
+}
+
+.error {
+  color: red;
+  text-align: center;
+}
+
+.success {
+  color: green;
+  text-align: center;
+}
+
+.center-button {
+  width: fit-content;
+  margin: 2rem auto;
+}
+
+

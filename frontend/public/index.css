@@ -1,0 +1,92 @@
+.button {
+  height: fit-content;
+  min-height: 3rem;
+  width: fit-content;
+  min-width: 10rem;
+  border-radius: 1rem;
+  font-size: 1.5rem;
+  background-size: 100% 200%;
+  background-image: linear-gradient(
+    to top,
+    var(--background-color) 50%,
+    var(--primary-color) 0
+  );
+  transition: background-position 200ms, color 200ms;
+}
+
+.button:hover {
+  background-position: bottom;
+  border: solid 2px var(--primary-color);
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --primary-color: #ebf0f2;
+  --background-color: #232730;
+  --black: #1c1b1b;
+  --green: #4eb004;
+  --red: #f03b00;
+  --orange: #f8a532;
+  --purple: #52207e;
+  --olive: #0f3f3f;
+
+  color: var(--primary-color);
+  background-color: var(--background-color);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 10px;
+}
+
+.main {
+  position: absolute;
+  top: 5rem;
+  left: 0;
+  right: 0;
+}
+
+@media only screen and (max-width: 800px) {
+  .main {
+    top: 2rem;
+  }
+}
+
+.container {
+  background-color: var(--black);
+  width: 80%;
+  max-width: 60rem;
+  height: fit-content;
+  margin: 2rem auto auto auto;
+  border-radius: 1rem;
+  padding: 2rem 2rem;
+}
+
+.table-container {
+  max-height: 60vh;
+  overflow-y: scroll;
+  border: solid 1px var(--primary-color);
+  border-radius: 0.5rem;
+  border-spacing: 1rem;
+}
+
+.center {
+  text-align: center;
+}
