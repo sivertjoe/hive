@@ -17,6 +17,9 @@ wasm-bindgen-test = "0.3.18"
 
 [dependencies]
 seed = "0.8.0"
+enum-as-inner = "0.3.3"
+serde = { version = "1.0", features = ["derive"] }
+shared = { path = "../shared" }
 
 [profile.release]
 lto = true

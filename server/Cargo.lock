@@ -1069,9 +1069,10 @@ dependencies = [
  "hyper",
  "hyper-openssl",
  "mongodb",
- "openssl",
  "serde",
+ "serde_json",
  "sha2",
+ "shared",
  "tokio",
  "uuid",
 ]
@@ -1100,6 +1101,13 @@ dependencies = [
  "cpufeatures",
  "digest",
  "opaque-debug",
+]
+
+[[package]]
+name = "shared"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
