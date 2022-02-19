@@ -16,9 +16,16 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 #[tokio::main]
 pub async fn main() -> Result<(), Error>
 {
-    // let _client = connect().await?;
-    let make_svc = make_service_fn(move |_| async move {
-        Ok::<_, Infallible>(service_fn(move |req| async move { handle(req).await }))
+    let client = connect().await?;
+
+    let make_svc = make_service_fn(|_| {
+        let client = client.clone();
+        async move {
+            Ok::<_, Infallible>(service_fn(move |req| {
+                let client = client.clone();
+                async move { handle(req, client).await }
+            }))
+        }
     });
 
     let addr = ([0, 0, 0, 0], 5000).into();

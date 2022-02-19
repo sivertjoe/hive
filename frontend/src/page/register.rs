@@ -1,6 +1,6 @@
 use seed::{self, prelude::*, *};
 use serde::Serialize;
-use shared::model::UserCredentials;
+use shared::model::{http::*, UserCredentials};
 
 use crate::Msg::Register;
 
@@ -10,7 +10,6 @@ pub fn init(mut url: Url) -> Option<Model>
         form: UserCredentials::default(), text: None
     })
 }
-
 
 pub struct Model
 {
@@ -76,9 +75,27 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             model.form.password = password;
         },
 
-        Msg::Fetched(Ok(text)) =>
+        Msg::Fetched(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text)
         {
-            model.text = Some(Status::Success(text));
+            Ok(resp) => match resp.status
+            {
+                201 =>
+                {
+                    model.text = Some(Status::Success("Success".into()));
+                    let uuid: String = resp.get_body();
+                    LocalStorage::insert("uuid", &uuid).expect("inserting uuid in LocalStorage");
+                },
+
+                e =>
+                {
+                    let err: String = resp.get_body();
+                    model.text = Some(Status::Error(format!("Error ({e}): {err}")));
+                },
+            },
+            Err(e) =>
+            {
+                model.text = Some(Status::Error(format!("deserialize error, {e:?}")));
+            },
         },
 
         Msg::Fetched(Err(text)) =>

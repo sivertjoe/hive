@@ -105,6 +105,7 @@ dependencies = [
  "enum-as-inner",
  "seed",
  "serde",
+ "serde_json",
  "shared",
  "wasm-bindgen-test",
 ]
@@ -560,6 +561,7 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
 ]
 
 [[package]]
