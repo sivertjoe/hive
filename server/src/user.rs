@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use shared::model::UserCredentials;
 
+use crate::database::hash;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User
 {
@@ -31,13 +33,4 @@ impl User
 fn uuid() -> String
 {
     format!("{}", uuid::Uuid::new_v4())
-}
-
-fn hash(word: &str) -> String
-{
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(word);
-    let result = hasher.finalize();
-    format!("{result:x}")
 }

@@ -69,6 +69,15 @@ pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
     }
 }
 
+pub fn hash(word: &str) -> String
+{
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(word);
+    let result = hasher.finalize();
+    format!("{result:x}")
+}
+
 impl From<mongodb::error::Error> for DatabaseError
 {
     fn from(error: mongodb::error::Error) -> Self
