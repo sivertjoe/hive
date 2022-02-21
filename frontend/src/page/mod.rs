@@ -10,7 +10,7 @@ use enum_as_inner::EnumAsInner;
 pub enum Page
 {
     Home,
-    Login,
+    Login(login::Model),
     Register(register::Model),
     NotFound,
 }
@@ -22,7 +22,7 @@ impl Page
         match url.next_path_part()
         {
             None => Self::Home,
-            Some("login") => login::init(url).map_or(Self::NotFound, |_| Self::Login),
+            Some("login") => login::init(url).map_or(Self::NotFound, Self::Login),
             Some("register") => register::init(url).map_or(Self::NotFound, Self::Register),
             Some(_) => Self::NotFound,
         }

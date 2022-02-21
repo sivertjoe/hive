@@ -21,6 +21,7 @@ pub enum Msg
 {
     UrlChanged(subs::UrlChanged),
     Register(page::register::Msg),
+    Login(page::login::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
@@ -33,6 +34,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             model.page.as_register_mut().unwrap(),
             &mut orders.proxy(Msg::Register),
         ),
+        Msg::Login(msg) => page::login::update(
+            msg,
+            model.page.as_login_mut().unwrap(),
+            &mut orders.proxy(Msg::Login),
+        ),
     }
 }
 
@@ -41,7 +47,7 @@ fn view(model: &Model) -> Node<Msg>
     div![component::navbar::view(&model), div![C!("main"), match model.page
     {
         Page::Home => page::home::view(),
-        Page::Login => page::login::view(),
+        Page::Login(ref model) => page::login::view(model),
         Page::Register(ref model) => page::register::view(model),
         Page::NotFound => div!["404"],
     }]]
