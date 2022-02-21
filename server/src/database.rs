@@ -11,12 +11,12 @@ type Uuid = String;
 
 pub const LIVE: &'static str = "live";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum DatabaseError
 {
     UserAlreadyExist,
     UserDontExist,
-    DbError,
+    DbError(mongodb::error::Error),
 }
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
@@ -47,18 +47,12 @@ pub async fn register_user(db: Database, cred: UserCredentials) -> DatabaseResul
     match col.find_one(filter, None).await
     {
         Ok(Some(_)) => Err(DatabaseError::UserAlreadyExist),
-        Ok(None) =>
+        Ok(None) => match col.insert_one(&user, None).await
         {
-            if col.insert_one(&user, None).await.is_err()
-            {
-                Err(DatabaseError::DbError)
-            }
-            else
-            {
-                Ok(user.uuid)
-            }
+            Ok(_) => Ok(user.uuid),
+            Err(e) => Err(DatabaseError::DbError(e)),
         },
-        _ => Err(DatabaseError::DbError),
+        Err(e) => Err(DatabaseError::DbError(e)),
     }
 }
 
@@ -71,14 +65,22 @@ pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
     {
         Ok(Some(user)) => Ok(user),
         Ok(None) => Err(DatabaseError::UserDontExist),
-        Err(_) => Err(DatabaseError::DbError),
+        Err(e) => Err(DatabaseError::DbError(e)),
+    }
+}
+
+impl From<mongodb::error::Error> for DatabaseError
+{
+    fn from(error: mongodb::error::Error) -> Self
+    {
+        DatabaseError::DbError(error)
     }
 }
 
 #[cfg(test)]
 mod test
 {
-    use mongodb::{error::Error, Collection, Database};
+    use mongodb::{Collection, Database};
 
     use super::*;
     use crate::user::User;
@@ -104,7 +106,7 @@ mod test
         }
     }
 
-    async fn get_collection<T>() -> Result<Guard<T>, Error>
+    async fn get_collection<T>() -> Result<Guard<T>, DatabaseError>
     {
         let client = connect().await?;
 
@@ -120,7 +122,7 @@ mod test
 
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_can_register_and_find_user() -> Result<(), Error>
+    async fn test_can_register_and_find_user() -> Result<(), DatabaseError>
     {
         let guard = get_collection::<User>().await?;
 
@@ -138,7 +140,7 @@ mod test
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_register_user_errors() -> Result<(), Error>
+    async fn test_register_user_errors() -> Result<(), DatabaseError>
     {
         let guard = get_collection::<User>().await?;
 
@@ -147,13 +149,13 @@ mod test
         };
 
         let res = find_user_by_uuid(guard.database.clone(), "totaly-a-uuid".to_string()).await;
-        assert_eq!(res.unwrap_err(), DatabaseError::UserDontExist);
+        assert!(matches!(res, Err(DatabaseError::UserDontExist)));
 
         let res = register_user(guard.database.clone(), cred.clone()).await;
         assert!(res.is_ok());
 
         let res = register_user(guard.database.clone(), cred).await;
-        assert_eq!(res.unwrap_err(), DatabaseError::UserAlreadyExist);
+        assert!(matches!(res, Err(DatabaseError::UserAlreadyExist)));
 
         Ok(())
     }
