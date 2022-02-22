@@ -3,14 +3,31 @@ use std::convert::Infallible;
 use hyper::{body, Body, Method, Request, Response};
 use shared::model::http::*;
 
+mod login;
 mod register;
+use login::login;
 use mongodb::Client;
 use register::register;
+use serde::Serialize;
 
+
+fn _body<T>(body: T) -> String
+where
+    T: Serialize,
+{
+    serde_json::to_string(&body).unwrap()
+}
+
+pub fn ok<T>(body: T) -> Body
+where
+    T: Serialize,
+{
+    Body::from(ResponseBody::to_body(200, _body(body)))
+}
 
 pub fn create(body: String) -> Body
 {
-    Body::from(ResponseBody::to_body(201, body))
+    Body::from(ResponseBody::to_body(201, _body(body)))
 }
 
 pub fn method_not_allowed() -> Body
@@ -20,7 +37,7 @@ pub fn method_not_allowed() -> Body
 
 pub fn error(error: crate::database::DatabaseError) -> Body
 {
-    let body = serde_json::to_string(&format!("{error:?}")).unwrap();
+    let body = _body(&format!("{error:?}"));
     Body::from(ResponseBody::to_body(500, body))
 }
 
@@ -56,6 +73,7 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
     match req.uri().path()
     {
         "/register" => register(req, client).await,
+        "/login" => login(req, client).await,
         _ => Response::new(not_found()),
     }
 }

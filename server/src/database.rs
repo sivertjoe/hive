@@ -36,6 +36,21 @@ pub async fn connect() -> Result<Client, Error>
     Client::with_options(client_options)
 }
 
+pub async fn login(db: Database, cred: UserCredentials) -> DatabaseResult<Uuid>
+{
+    let col = db.collection::<User>("users");
+
+    // Check if user with same name exists
+    let password_hash = hash(&cred.password);
+    let filter = doc! { "name": cred.name.as_str(), "password_hash": password_hash.as_str() };
+    match col.find_one(filter, None).await
+    {
+        Ok(Some(user)) => Ok(user.uuid),
+        Ok(None) => Err(DatabaseError::UserDontExist),
+        Err(e) => Err(DatabaseError::DbError(e)),
+    }
+}
+
 
 pub async fn register_user(db: Database, cred: UserCredentials) -> DatabaseResult<Uuid>
 {
@@ -165,6 +180,39 @@ mod test
 
         let res = register_user(guard.database.clone(), cred).await;
         assert!(matches!(res, Err(DatabaseError::UserAlreadyExist)));
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_not_registered_user_can_not_login() -> Result<(), DatabaseError>
+    {
+        let guard = get_collection::<User>().await?;
+        let cred = UserCredentials {
+            name: "sivert".into(), password: "password".into()
+        };
+        let res = login(guard.database.clone(), cred).await;
+        assert!(matches!(res, Err(DatabaseError::UserDontExist)));
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_user_can_login() -> Result<(), DatabaseError>
+    {
+        let guard = get_collection::<User>().await?;
+
+        let cred = UserCredentials {
+            name: "sivert".into(), password: "password".into()
+        };
+
+        let reg_uuid = register_user(guard.database.clone(), cred.clone()).await?;
+
+        let res = login(guard.database.clone(), cred).await;
+        assert!(res.is_ok());
+        let log_uuid = res.unwrap();
+
+        assert_eq!(log_uuid, reg_uuid);
 
         Ok(())
     }

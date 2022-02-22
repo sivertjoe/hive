@@ -15,7 +15,7 @@ pub async fn register(req: Request<Body>, client: Client) -> Response<Body>
 
             match register_user(client.database(LIVE), cred).await
             {
-                Ok(uuid) => Response::new(create(serde_json::to_string(&uuid).unwrap())),
+                Ok(uuid) => Response::new(create(uuid)),
                 Err(e) => Response::new(error(e)),
             }
         },
