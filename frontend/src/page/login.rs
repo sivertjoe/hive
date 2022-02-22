@@ -41,7 +41,7 @@ pub enum Msg
     Fetched(fetch::Result<String>),
 }
 
-async fn send_register_message(form: UserCredentials) -> fetch::Result<String>
+async fn send_message(form: UserCredentials) -> fetch::Result<String>
 {
     Request::new("http://0.0.0.0:5000/login")
         .method(Method::Post)
@@ -62,9 +62,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::Submit =>
         {
             let form = model.form.clone();
-            orders
-                .skip()
-                .perform_cmd(async { Msg::Fetched(send_register_message(form).await) });
+            orders.skip().perform_cmd(async { Msg::Fetched(send_message(form).await) });
         },
         Msg::NameChanged(name) =>
         {
@@ -114,7 +112,7 @@ pub fn view<Ms: 'static>(model: &Model) -> Node<Ms>
 {
     form![
         C!["container"],
-        h1!["Register a new user"],
+        h1!["Login"],
         ev(Ev::Submit, |event| {
             event.prevent_default();
             Login(Msg::Submit)
@@ -133,7 +131,7 @@ pub fn view<Ms: 'static>(model: &Model) -> Node<Ms>
                 input_ev(Ev::Input, |password| { Login(Msg::PasswordChanged(password)) }),
             ]
         ],
-        div![C!("center-button"), button![C!["button"], "Register"]],
+        div![C!("center-button"), button![C!["button"], "Login"]],
         IF!(model.text.is_some() => match model.text {
             Some(Status::Success(ref s)) => h2! [C!("success"), s],
             Some(Status::Error(ref s)) => h2! [C!("error"), s],
