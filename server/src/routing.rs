@@ -68,8 +68,22 @@ pub async fn get_body<T: serde::de::DeserializeOwned>(req: Request<Body>) -> Opt
     serde_json::from_str::<T>(s).ok()
 }
 
+fn log_req(req: &Request<Body>)
+{
+    use chrono::prelude::*;
+    let method = req.method().to_string();
+    let url = req.uri();
+
+    let now = Utc::now().format("%d-%m-%y %H:%M:%S");
+    println!("[{now}]\t{method}\t{url}");
+}
+
 async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
 {
+    if cfg!(debug_assertions)
+    {
+        log_req(&req);
+    }
     match req.uri().path()
     {
         "/register" => register(req, client).await,
@@ -80,7 +94,6 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
 
 pub async fn handle(req: Request<Body>, client: Client) -> Result<Response<Body>, Infallible>
 {
-    println!("Got request!");
     Ok(match *req.method()
     {
         Method::OPTIONS => Response::new(Body::default()),
