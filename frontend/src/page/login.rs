@@ -68,7 +68,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         {
             Ok(resp) => match resp.status
             {
-                201 =>
+                200 =>
                 {
                     model.text = Some(Status::Success("Success".into()));
                     let uuid: String = resp.get_body();
