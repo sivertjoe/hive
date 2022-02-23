@@ -1,10 +1,9 @@
 use seed::{self, prelude::*, *};
-use serde::Serialize;
 use shared::model::{http::*, UserCredentials};
 
 use crate::Msg::Register;
 
-pub fn init(mut url: Url) -> Option<Model>
+pub fn init(_url: Url) -> Option<Model>
 {
     Some(Model {
         form: UserCredentials::default(), text: None
@@ -15,14 +14,6 @@ pub struct Model
 {
     form: UserCredentials,
     text: Option<Status>,
-}
-
-
-enum RemoteData<T>
-{
-    NotAsked,
-    Loading,
-    Loaded(T),
 }
 
 

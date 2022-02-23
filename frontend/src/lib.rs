@@ -7,14 +7,14 @@ use page::Page;
 fn init(url: Url, _: &mut impl Orders<Msg>) -> Model
 {
     Model {
-        base_url: url.to_base_url(), page: Page::init(url)
+        _base_url: url.to_base_url(), page: Page::init(url)
     }
 }
 
 pub struct Model
 {
-    base_url: Url,
-    page:     Page,
+    _base_url: Url,
+    page:      Page,
 }
 
 pub enum Msg
