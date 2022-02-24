@@ -1,17 +1,11 @@
 use seed::{self, prelude::*};
-use shared::model::http::*;
 
 use crate::component::user_cred;
 
 pub fn init(_url: Url) -> Option<Model>
 {
-    let func = Box::new(|resp: ResponseBody| {
-        let uuid: String = resp.get_body();
-        LocalStorage::insert("uuid", &uuid).expect("inserting uuid in LocalStorage");
-    });
-
     Some(Model {
-        user_cred: user_cred::init("Login".to_string(), ("login".to_string(), 200), func),
+        user_cred: user_cred::init("Login".to_string(), ("login".to_string(), 200))
     })
 }
 

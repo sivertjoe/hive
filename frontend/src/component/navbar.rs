@@ -20,11 +20,16 @@ fn create_link(text: &str) -> Node<Msg>
     h2![a![_text, attrs! { At::Href => text }]]
 }
 
-pub fn view(_model: &Model) -> Node<Msg>
+pub fn view(model: &Model) -> Node<Msg>
 {
     div![C!("navbar"), div![C!("menu"), div![
         C!("items"),
         create_link("register"),
-        create_link("login")
+        create_link("login"),
+        create_link("create"),
+        IF!(model.user.is_some() => match &model.user {
+            Some(name) => create_link(&name),
+            _ => unreachable!()
+        })
     ]]]
 }

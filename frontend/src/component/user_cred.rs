@@ -1,19 +1,14 @@
 use seed::{self, prelude::*, *};
 use shared::model::{http::*, UserCredentials};
 
-use crate::Msg::UserCred;
+use crate::Msg::{Login, UserCred};
 
 
-pub fn init(
-    text: String,
-    (end_point, success_code): (String, u32),
-    func: Box<dyn Fn(ResponseBody)>,
-) -> Model
+pub fn init(text: String, (end_point, success_code): (String, u32)) -> Model
 {
     Model {
         form: UserCredentials::default(),
         status_text: None,
-        func,
         end_point,
         success_code,
         text,
@@ -24,7 +19,6 @@ pub struct Model
 {
     form:         UserCredentials,
     status_text:  Option<Status>,
-    func:         Box<dyn Fn(ResponseBody)>,
     success_code: u32,
     end_point:    String,
     text:         String,
@@ -59,7 +53,7 @@ async fn send_message(end_point: String, form: UserCredentials) -> fetch::Result
 }
 
 
-pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
+pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<crate::Msg>)
 {
     match msg
     {
@@ -68,6 +62,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             let form = model.form.clone();
             let end_point = model.end_point.clone();
             orders
+                .proxy(UserCred)
                 .skip()
                 .perform_cmd(async { Msg::Fetched(send_message(end_point, form).await) });
         },
@@ -87,7 +82,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 code if code == model.success_code =>
                 {
                     model.status_text = Some(Status::Success("Success".into()));
-                    (model.func)(resp);
+                    let uuid: String = resp.get_body();
+                    LocalStorage::insert("uuid", &uuid).expect("inserting uuid in LocalStorage");
+                    orders.send_msg(Login {
+                        name: model.form.name.clone()
+                    });
                 },
 
                 e =>

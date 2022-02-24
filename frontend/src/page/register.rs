@@ -5,13 +5,8 @@ use crate::component::user_cred;
 
 pub fn init(_url: Url) -> Option<Model>
 {
-    let func = Box::new(|resp: ResponseBody| {
-        let uuid: String = resp.get_body();
-        LocalStorage::insert("uuid", &uuid).expect("inserting uuid in LocalStorage");
-    });
-
     Some(Model {
-        user_cred: user_cred::init("Register".to_string(), ("register".to_string(), 201), func),
+        user_cred: user_cred::init("Register".to_string(), ("register".to_string(), 201)),
     })
 }
 
