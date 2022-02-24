@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use shared::model::UserCredentials;
 
-use crate::database::hash;
+use crate::database::{hash, uuid};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User
@@ -28,9 +28,4 @@ impl User
             uuid: uuid(),
         }
     }
-}
-
-fn uuid() -> String
-{
-    format!("{}", uuid::Uuid::new_v4())
 }

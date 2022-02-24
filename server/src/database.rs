@@ -93,6 +93,11 @@ pub fn hash(word: &str) -> String
     format!("{result:x}")
 }
 
+pub fn uuid() -> String
+{
+    format!("{}", uuid::Uuid::new_v4())
+}
+
 impl From<mongodb::error::Error> for DatabaseError
 {
     fn from(error: mongodb::error::Error) -> Self
