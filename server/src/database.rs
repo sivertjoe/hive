@@ -77,6 +77,7 @@ pub async fn register_user(db: Database, cred: UserCredentials) -> DatabaseResul
     }
 }
 
+#[allow(dead_code)]
 pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
 {
     let col = db.collection::<User>(USERS);
