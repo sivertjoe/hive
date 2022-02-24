@@ -9,7 +9,14 @@ use shared::model::UserCredentials;
 use crate::user::User;
 type Uuid = String;
 
-pub const LIVE: &'static str = "live";
+
+pub const LIVE: &str = "live";
+
+
+// collections types
+pub const USERS: &str = "users";
+pub const CREATE_GAME: &str = "create-game";
+
 
 #[derive(Debug)]
 pub enum DatabaseError
@@ -38,7 +45,7 @@ pub async fn connect() -> Result<Client, Error>
 
 pub async fn login(db: Database, cred: UserCredentials) -> DatabaseResult<Uuid>
 {
-    let col = db.collection::<User>("users");
+    let col = db.collection::<User>(USERS);
 
     // Check if user with same name exists
     let password_hash = hash(&cred.password);
@@ -54,7 +61,7 @@ pub async fn login(db: Database, cred: UserCredentials) -> DatabaseResult<Uuid>
 
 pub async fn register_user(db: Database, cred: UserCredentials) -> DatabaseResult<Uuid>
 {
-    let col = db.collection::<User>("users");
+    let col = db.collection::<User>(USERS);
     let user = User::from_cred(cred);
 
     // Check if user with same name exists
@@ -73,7 +80,7 @@ pub async fn register_user(db: Database, cred: UserCredentials) -> DatabaseResul
 
 pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
 {
-    let col = db.collection::<User>("users");
+    let col = db.collection::<User>(USERS);
 
     let filter = doc! { "uuid": uuid };
     match col.find_one(filter, None).await
