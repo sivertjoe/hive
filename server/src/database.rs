@@ -121,13 +121,12 @@ mod test
     use crate::user::User;
 
 
-    struct Guard<T>
+    struct Guard
     {
-        database:   Database,
-        collection: Collection<T>,
+        database: Database,
     }
 
-    impl<T> Drop for Guard<T>
+    impl Drop for Guard
     {
         fn drop(&mut self)
         {
@@ -141,21 +140,19 @@ mod test
         }
     }
 
-    async fn get_collection<T>() -> Result<Guard<T>, DatabaseError>
+    async fn get_guard() -> Result<Guard, DatabaseError>
     {
         let client = connect().await?;
 
         let name = format!("{}", uuid::Uuid::new_v4());
         let database = client.database(&name);
-        let collection = database.collection::<T>(&name);
 
         Ok(Guard {
             database,
-            collection,
         })
     }
 
-    async fn reg(guard: &Guard<User>, name: String) -> DatabaseResult<Uuid>
+    async fn reg(guard: &Guard, name: String) -> DatabaseResult<Uuid>
     {
         let cred = UserCredentials {
             name,
@@ -168,7 +165,7 @@ mod test
     #[tokio::test(flavor = "multi_thread")]
     async fn test_can_register_and_find_user() -> Result<(), DatabaseError>
     {
-        let guard = get_collection::<User>().await?;
+        let guard = get_guard().await?;
 
         let res = reg(&guard, "sivert".into()).await;
         assert!(res.is_ok());
@@ -182,7 +179,7 @@ mod test
     #[tokio::test(flavor = "multi_thread")]
     async fn test_register_user_errors() -> Result<(), DatabaseError>
     {
-        let guard = get_collection::<User>().await?;
+        let guard = get_guard().await?;
 
         let cred = UserCredentials {
             name: "sivert".into(), password: "password".into()
@@ -203,7 +200,7 @@ mod test
     #[tokio::test(flavor = "multi_thread")]
     async fn test_not_registered_user_can_not_login() -> Result<(), DatabaseError>
     {
-        let guard = get_collection::<User>().await?;
+        let guard = get_guard().await?;
         let cred = UserCredentials {
             name: "sivert".into(), password: "password".into()
         };
@@ -216,6 +213,7 @@ mod test
     #[tokio::test(flavor = "multi_thread")]
     async fn test_user_can_login() -> Result<(), DatabaseError>
     {
+        let guard = get_guard().await?;
 
         let cred = UserCredentials {
             name: "sivert".into(), password: "password".into()
