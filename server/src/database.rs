@@ -4,9 +4,12 @@ use mongodb::{
     options::{ClientOptions, Credential},
     Client, Database,
 };
-use shared::{model::UserCredentials, Uuid};
+use shared::{
+    model::{CreateGameForm, UserCredentials},
+    Uuid,
+};
 
-use crate::user::User;
+use crate::{create_game::CreateGame, user::User};
 
 
 pub const LIVE: &str = "live";
@@ -87,6 +90,18 @@ pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
     {
         Ok(Some(user)) => Ok(user),
         Ok(None) => Err(DatabaseError::UserDontExist),
+        Err(e) => Err(DatabaseError::DbError(e)),
+    }
+}
+
+pub async fn create_game(db: Database, form: CreateGameForm) -> DatabaseResult<()>
+{
+    let create_game = CreateGame::from_form(form);
+    let col = db.collection::<CreateGame>(CREATE_GAME);
+
+    match col.insert_one(&create_game, None).await
+    {
+        Ok(_) => Ok(()),
         Err(e) => Err(DatabaseError::DbError(e)),
     }
 }
@@ -228,6 +243,20 @@ mod test
 
         assert_eq!(log_uuid, reg_uuid);
 
+        Ok(())
+    }
+
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_user_can_create_game() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+        let creator = reg(&guard, "sivert".into()).await?;
+
+        let create_game_form = CreateGameForm {
+            creator,
+        };
+        assert!(create_game(guard.database.clone(), create_game_form).await.is_ok());
         Ok(())
     }
 }

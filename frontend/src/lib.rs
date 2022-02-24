@@ -60,11 +60,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
 fn view(model: &Model) -> Node<Msg>
 {
-    div![component::navbar::view(&model), div![C!("main"), match model.page
+    div![component::navbar::view(&model), div![C!("main"), match &model.page
     {
         Page::Home => page::home::view(),
-        Page::Login(ref model) => page::login::view(model),
-        Page::Register(ref model) => page::register::view(model),
+        Page::Login(model) => page::login::view(model),
+        Page::Register(model) => page::register::view(model),
+        Page::Create(model) => page::create::view(model),
         Page::NotFound => div!["404"],
     }]]
 }

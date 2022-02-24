@@ -1,5 +1,6 @@
 use seed::prelude::*;
 
+pub mod create;
 pub mod home;
 pub mod login;
 pub mod register;
@@ -12,6 +13,8 @@ pub enum Page
     Home,
     Login(login::Model),
     Register(register::Model),
+    Create(create::Model),
+
     NotFound,
 }
 
@@ -24,6 +27,7 @@ impl Page
             None => Self::Home,
             Some("login") => login::init(url).map_or(Self::NotFound, Self::Login),
             Some("register") => register::init(url).map_or(Self::NotFound, Self::Register),
+            Some("create") => Self::Create(create::init()),
             Some(_) => Self::NotFound,
         }
     }

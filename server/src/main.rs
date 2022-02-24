@@ -1,3 +1,4 @@
+mod create_game;
 mod user;
 
 mod routing;

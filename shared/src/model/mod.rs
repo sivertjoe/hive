@@ -3,3 +3,6 @@ pub use user::UserCredentials;
 
 pub mod http;
 pub use http::*;
+
+pub mod create_game_form;
+pub use create_game_form::CreateGameForm;
