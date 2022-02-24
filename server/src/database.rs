@@ -4,10 +4,9 @@ use mongodb::{
     options::{ClientOptions, Credential},
     Client, Database,
 };
-use shared::model::UserCredentials;
+use shared::{model::UserCredentials, Uuid};
 
 use crate::user::User;
-type Uuid = String;
 
 
 pub const LIVE: &str = "live";
