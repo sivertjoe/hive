@@ -14,6 +14,12 @@
   transition: background-position 200ms, color 200ms;
 }
 
+.accept-button {
+    font-size: 1rem;
+    min-height: 2rem;
+    min-width: 5rem;
+}
+
 .button:hover {
   background-position: bottom;
   border: solid 2px var(--primary-color);
@@ -69,6 +75,16 @@ code {
   }
 }
 
+
+td {
+    padding-top: 5;
+    font-size: 1.5rem;
+}
+
+table {
+  width: 100%;
+}
+
 .container {
   background-color: var(--black);
   width: 80%;
@@ -80,6 +96,9 @@ code {
 }
 
 .table-container {
+  text-align: center;
+  width: 50%;
+  margin: auto auto;
   max-height: 60vh;
   overflow-y: scroll;
   border: solid 1px var(--primary-color);

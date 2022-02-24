@@ -24,6 +24,7 @@ pub fn view(model: &Model) -> Node<Msg>
 {
     div![C!("navbar"), div![C!("menu"), div![
         C!("items"),
+        h2![a!["Home", attrs! { At::Href => "/" }]], // Does not go to the page??
         create_link("register"),
         create_link("login"),
         create_link("create"),

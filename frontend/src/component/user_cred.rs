@@ -83,7 +83,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<crate::Msg>)
                 {
                     model.status_text = Some(Status::Success("Success".into()));
                     let uuid: String = resp.get_body();
+                    let name = &model.form.name;
                     LocalStorage::insert("uuid", &uuid).expect("inserting uuid in LocalStorage");
+                    LocalStorage::insert("name", &name).expect("inserting name in LocalStorage");
                     orders.send_msg(Login {
                         name: model.form.name.clone()
                     });

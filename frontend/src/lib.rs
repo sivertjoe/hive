@@ -6,8 +6,11 @@ use page::Page;
 
 fn init(url: Url, _: &mut impl Orders<Msg>) -> Model
 {
+    let user = LocalStorage::get("name").ok();
     Model {
-        _base_url: url.to_base_url(), page: Page::init(url), user: None
+        _base_url: url.to_base_url(),
+        page: Page::init(url),
+        user,
     }
 }
 
@@ -60,9 +63,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
 fn view(model: &Model) -> Node<Msg>
 {
+    log(format!("{:?}", model.user));
     div![component::navbar::view(&model), div![C!("main"), match &model.page
     {
-        Page::Home => page::home::view(),
+        Page::Home(model) => page::home::view(model),
         Page::Login(model) => page::login::view(model),
         Page::Register(model) => page::register::view(model),
         Page::Create(model) => page::create::view(model),
