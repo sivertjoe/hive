@@ -3,9 +3,9 @@ use mongodb::Client;
 use shared::model::CreateGameForm;
 
 use super::{create, error, get_body, method_not_allowed};
-use crate::database::{create_game, LIVE};
+use crate::database::{self, LIVE};
 
-pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
+pub async fn create_game(req: Request<Body>, client: Client) -> Response<Body>
 {
     match *req.method()
     {
@@ -13,7 +13,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
         {
             let form = get_body::<CreateGameForm>(req).await.unwrap();
 
-            match create_game(client.database(LIVE), form).await
+            match database::create_game(client.database(LIVE), form).await
             {
                 Ok(()) => Response::new(create(())),
                 Err(e) => Response::new(error(e)),

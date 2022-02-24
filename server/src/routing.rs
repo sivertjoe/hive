@@ -3,10 +3,10 @@ use std::convert::Infallible;
 use hyper::{body, Body, Method, Request, Response};
 use shared::model::http::*;
 
-mod game;
+mod create_game;
 mod login;
 mod register;
-use game::game;
+use create_game::create_game;
 use login::login;
 use mongodb::Client;
 use register::register;
@@ -92,7 +92,7 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
     {
         "/register" => register(req, client).await,
         "/login" => login(req, client).await,
-        "/game" => game(req, client).await,
+        "/create-game" => create_game(req, client).await,
         _ => Response::new(not_found()),
     }
 }

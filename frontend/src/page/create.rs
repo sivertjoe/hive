@@ -37,7 +37,7 @@ async fn send_message(creator: Uuid) -> fetch::Result<String>
         creator,
     };
 
-    Request::new("http://0.0.0.0:5000/game")
+    Request::new("http://0.0.0.0:5000/create-game")
         .method(Method::Post)
         .json(&form)?
         .fetch()
