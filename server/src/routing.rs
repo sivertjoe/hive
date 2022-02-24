@@ -25,7 +25,9 @@ where
     Body::from(ResponseBody::to_body(200, _body(body)))
 }
 
-pub fn create(body: String) -> Body
+pub fn create<T>(body: T) -> Body
+where
+    T: Serialize,
 {
     Body::from(ResponseBody::to_body(201, _body(body)))
 }
