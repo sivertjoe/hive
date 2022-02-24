@@ -155,17 +155,22 @@ mod test
         })
     }
 
+    async fn reg(guard: &Guard<User>, name: String) -> DatabaseResult<Uuid>
+    {
+        let cred = UserCredentials {
+            name,
+            password: "password".into(),
+        };
+        register_user(guard.database.clone(), cred).await
+    }
+
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_can_register_and_find_user() -> Result<(), DatabaseError>
     {
         let guard = get_collection::<User>().await?;
 
-        let cred = UserCredentials {
-            name: "sivert".into(), password: "password".into()
-        };
-
-        let res = register_user(guard.database.clone(), cred).await;
+        let res = reg(&guard, "sivert".into()).await;
         assert!(res.is_ok());
 
         let res = find_user_by_uuid(guard.database.clone(), res.unwrap()).await;
@@ -211,7 +216,6 @@ mod test
     #[tokio::test(flavor = "multi_thread")]
     async fn test_user_can_login() -> Result<(), DatabaseError>
     {
-        let guard = get_collection::<User>().await?;
 
         let cred = UserCredentials {
             name: "sivert".into(), password: "password".into()
