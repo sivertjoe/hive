@@ -4,17 +4,19 @@ mod component;
 mod page;
 use page::Page;
 
-fn init(url: Url, _: &mut impl Orders<Msg>) -> Model {
+fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders.subscribe(Msg::UrlChanged);
+
     let user = LocalStorage::get("name").ok();
     Model {
-        _base_url: url.to_base_url(),
+        base_url: url.to_base_url(),
         page: Page::init(url),
         user,
     }
 }
 
 pub struct Model {
-    _base_url: Url,
+    base_url: Url,
     page: Page,
     user: Option<String>,
 }
@@ -50,7 +52,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 fn view(model: &Model) -> Node<Msg> {
-    log(format!("{:?}", model.user));
     div![
         component::navbar::view(&model),
         div![
@@ -64,6 +65,26 @@ fn view(model: &Model) -> Node<Msg> {
             }
         ]
     ]
+}
+
+struct_urls!();
+impl<'a> Urls<'a> {
+    pub fn home(self) -> Url {
+        self.base_url()
+    }
+    pub fn create(self) -> Url {
+        self.base_url().add_path_part("create")
+    }
+
+    pub fn register(self) -> Url {
+        self.base_url().add_path_part("register")
+    }
+    pub fn login(self) -> Url {
+        self.base_url().add_path_part("login")
+    }
+    pub fn user(self, user: &str) -> Url {
+        self.base_url().add_path_part("user").add_path_part(user)
+    }
 }
 
 #[wasm_bindgen(start)]

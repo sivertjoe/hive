@@ -1,34 +1,25 @@
 use seed::{prelude::*, *};
 
-use crate::{Model, Msg};
+use crate::{Model, Msg, Urls};
 
-fn capitalize(s: &str) -> String {
-    let mut c = s.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-    }
-}
-
-fn create_link(text: &str) -> Node<Msg> {
-    let _text = capitalize(text);
-
-    h2![a![_text, attrs! { At::Href => text }]]
+fn create_link(text: &str, url: Url) -> Node<Msg> {
+    h2![a![text, attrs! { At::Href => url }]]
 }
 
 pub fn view(model: &Model) -> Node<Msg> {
+    let url = || Urls::new(&model.base_url);
     div![
         C!("navbar"),
         div![
             C!("menu"),
             div![
                 C!("items"),
-                h2![a!["Home", attrs! { At::Href => "/" }]], // Does not go to the page??
-                create_link("register"),
-                create_link("login"),
-                create_link("create"),
+                create_link("Home", url().home()),
+                create_link("Register", url().register()),
+                create_link("Login", url().login()),
+                create_link("Create", url().create()),
                 IF!(model.user.is_some() => match &model.user {
-                    Some(name) => create_link(&name),
+                    Some(name) => create_link(&name, url().user(&name)),
                     _ => unreachable!()
                 })
             ]
