@@ -52,11 +52,10 @@ pub async fn login(db: Database, cred: UserCredentials) -> DatabaseResult<Uuid>
     // Check if user with same name exists
     let password_hash = hash(&cred.password);
     let filter = doc! { "name": cred.name.as_str(), "password_hash": password_hash.as_str() };
-    match col.find_one(filter, None).await
+    match col.find_one(filter, None).await?
     {
-        Ok(Some(user)) => Ok(user.uuid),
-        Ok(None) => Err(DatabaseError::UserDontExist),
-        Err(e) => Err(DatabaseError::DbError(e)),
+        Some(user) => Ok(user.uuid),
+        None => Err(DatabaseError::UserDontExist),
     }
 }
 
@@ -68,15 +67,14 @@ pub async fn register_user(db: Database, cred: UserCredentials) -> DatabaseResul
 
     // Check if user with same name exists
     let filter = doc! { "name": user.name.as_str() };
-    match col.find_one(filter, None).await
+    match col.find_one(filter, None).await?
     {
-        Ok(Some(_)) => Err(DatabaseError::UserAlreadyExist),
-        Ok(None) => match col.insert_one(&user, None).await
+        Some(_) => Err(DatabaseError::UserAlreadyExist),
+        None => match col.insert_one(&user, None).await
         {
             Ok(_) => Ok(user.uuid),
             Err(e) => Err(DatabaseError::DbError(e)),
         },
-        Err(e) => Err(DatabaseError::DbError(e)),
     }
 }
 
