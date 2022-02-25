@@ -18,9 +18,9 @@ pub enum Page {
 }
 
 impl Page {
-    pub fn init(mut url: Url) -> Self {
+    pub fn init(mut url: Url, orders: &mut impl Orders<crate::Msg>) -> Self {
         match url.next_path_part() {
-            None => Self::Home(home::init()),
+            None => Self::Home(home::init(&mut orders.proxy(crate::Msg::Home))),
             Some("login") => login::init(url).map_or(Self::NotFound, Self::Login),
             Some("register") => register::init(url).map_or(Self::NotFound, Self::Register),
             Some("create") => Self::Create(create::init()),

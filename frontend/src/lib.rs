@@ -10,7 +10,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     let user = LocalStorage::get("name").ok();
     Model {
         base_url: url.to_base_url(),
-        page: Page::init(url),
+        page: Page::init(url, orders),
         user,
     }
 }
@@ -25,6 +25,7 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     UserCred(component::user_cred::Msg),
     CreateGame(page::create::Msg),
+    Home(page::home::Msg),
 
     Login { name: String },
 }
@@ -39,7 +40,7 @@ fn get_user_cred(model: &mut Model) -> &mut component::user_cred::Model {
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url),
+        Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url, orders),
         Msg::UserCred(msg) => component::user_cred::update(msg, get_user_cred(model), orders),
         Msg::CreateGame(msg) => page::create::update(
             msg,
@@ -47,6 +48,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             &mut orders.proxy(Msg::CreateGame),
         ),
 
+        Msg::Home(msg) => page::home::update(msg, model.page.as_home_mut().unwrap()),
         Msg::Login { name } => model.user = Some(name),
     }
 }

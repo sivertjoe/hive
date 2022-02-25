@@ -95,6 +95,7 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
         "/register" => register(req, client).await,
         "/login" => login(req, client).await,
         "/create-game" => create_game(req, client).await,
+        "/home" => home(req, client).await,
         _ => Response::new(not_found()),
     }
 }

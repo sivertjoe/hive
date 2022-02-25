@@ -12,8 +12,8 @@ pub struct CreateGameForm
 #[derive(Serialize, Deserialize)]
 pub struct CreateGameChallenge
 {
-    pub creator: String,
-    pub uuid:    String,
+    pub name: String,
+    pub uuid: String,
 }
 
 #[derive(Serialize, Deserialize)]

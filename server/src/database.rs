@@ -107,15 +107,16 @@ pub async fn create_game(db: Database, form: CreateGameForm) -> DatabaseResult<(
 
 pub async fn home(db: Database, uuid: Uuid) -> DatabaseResult<Vec<CreateGameChallengeBundle>>
 {
-    /*let mock = vec![
+    let mock = vec![
         CreateGameChallengeBundle {
-            name: "Sivert".into(), games: vec![uuid(), uuid()]
+            name:  "Sivert".into(),
+            games: vec![crate::uuid(), crate::uuid()],
         },
         CreateGameChallengeBundle {
-            name: "Bernt".into(), games: vec![uuid()]
+            name: "Bernt".into(), games: vec![crate::uuid()]
         },
     ];
-    return Ok(mock);*/
+    return Ok(mock);
 
 
     use futures::stream::StreamExt;
