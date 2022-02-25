@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared::model::UserCredentials;
+use shared::{model::UserCredentials, Uuid};
 
 use crate::database::{hash, uuid};
 
@@ -8,24 +8,24 @@ pub struct User
 {
     pub name:          String,
     pub password_hash: String,
-    pub uuid:          String,
+    pub uuid:          Uuid,
+    pub create_game:   Vec<Uuid>,
 }
 
 impl User
 {
     pub fn from_cred(cred: UserCredentials) -> Self
     {
-        let name = cred.name;
-        let password = cred.password;
-        Self::new(name, password)
-    }
+        let UserCredentials {
+            name,
+            password,
+        } = cred;
 
-    pub fn new(name: String, password: String) -> Self
-    {
         Self {
             name,
-            password_hash: hash(password.as_str()),
+            password_hash: hash(&password),
             uuid: uuid(),
+            create_game: Vec::new(),
         }
     }
 }

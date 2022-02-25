@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Uuid;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CreateGameForm
 {
     pub creator: Uuid,
@@ -14,4 +14,11 @@ pub struct CreateGameChallenge
 {
     pub creator: String,
     pub uuid:    String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CreateGameChallengeBundle
+{
+    pub name:  String,
+    pub games: Vec<Uuid>,
 }

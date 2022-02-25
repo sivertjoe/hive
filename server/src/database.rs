@@ -5,7 +5,7 @@ use mongodb::{
     Client, Database,
 };
 use shared::{
-    model::{CreateGameForm, UserCredentials},
+    model::{CreateGameChallengeBundle, CreateGameForm, UserCredentials},
     Uuid,
 };
 
@@ -84,24 +84,56 @@ pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
     let col = db.collection::<User>(USERS);
 
     let filter = doc! { "uuid": uuid };
-    match col.find_one(filter, None).await
+    match col.find_one(filter, None).await?
     {
-        Ok(Some(user)) => Ok(user),
-        Ok(None) => Err(DatabaseError::UserDontExist),
-        Err(e) => Err(DatabaseError::DbError(e)),
+        Some(user) => Ok(user),
+        None => Err(DatabaseError::UserDontExist),
     }
 }
 
 pub async fn create_game(db: Database, form: CreateGameForm) -> DatabaseResult<()>
 {
-    let create_game = CreateGame::from_form(form);
-    let col = db.collection::<CreateGame>(CREATE_GAME);
+    let col = db.collection::<User>(USERS);
+    let creator = form.creator;
+    let user = doc! { "uuid": &creator };
+    let update = doc! { "$push": { "create_game": uuid() } };
 
-    match col.insert_one(&create_game, None).await
+    match col.update_one(user, update, None).await
     {
         Ok(_) => Ok(()),
-        Err(e) => Err(DatabaseError::DbError(e)),
+        Err(e) => Err(e.into()),
     }
+}
+
+pub async fn home(db: Database, uuid: Uuid) -> DatabaseResult<Vec<CreateGameChallengeBundle>>
+{
+    /*let mock = vec![
+        CreateGameChallengeBundle {
+            name: "Sivert".into(), games: vec![uuid(), uuid()]
+        },
+        CreateGameChallengeBundle {
+            name: "Bernt".into(), games: vec![uuid()]
+        },
+    ];
+    return Ok(mock);*/
+
+
+    use futures::stream::StreamExt;
+    let col = db.collection::<User>(USERS);
+    let filter = doc! { "creator": { "$not": uuid.as_str() } };
+
+    Ok(col
+        .find(filter, None)
+        .await?
+        .map(|res| {
+            let res = res.unwrap();
+
+            CreateGameChallengeBundle {
+                name: res.name, games: res.create_game
+            }
+        })
+        .collect::<Vec<_>>()
+        .await)
 }
 
 pub fn hash(word: &str) -> String
@@ -255,6 +287,23 @@ mod test
             creator,
         };
         assert!(create_game(guard.database.clone(), create_game_form).await.is_ok());
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_home_content() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+        let creator = reg(&guard, "sivert".into()).await?;
+
+        let create_game_form = CreateGameForm {
+            creator: creator.clone()
+        };
+        assert!(create_game(guard.database.clone(), create_game_form.clone()).await.is_ok());
+        assert!(create_game(guard.database.clone(), create_game_form).await.is_ok());
+
+        assert!(home(guard.database.clone(), creator).await?.len() == 2);
+
         Ok(())
     }
 }

@@ -4,9 +4,11 @@ use hyper::{body, Body, Method, Request, Response};
 use shared::model::http::*;
 
 mod create_game;
+mod home;
 mod login;
 mod register;
 use create_game::create_game;
+use home::home;
 use login::login;
 use mongodb::Client;
 use register::register;
