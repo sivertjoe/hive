@@ -81,8 +81,13 @@ td {
     font-size: 1.5rem;
 }
 
-table {
-  width: 100%;
+.challenge-table {
+  width: 50%;
+  margin: auto auto;
+  text-align: center;
+  border: solid 1px var(--primary-color);
+  border-radius: 0.5rem;
+  border-spacing: 1rem;
 }
 
 .container {
