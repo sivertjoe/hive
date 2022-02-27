@@ -16,13 +16,31 @@ use crate::Uuid;
 
     Thus, the maximum board length in any direction is:
 */
-const BOARD_SIZE: u32 = 2 + 4 + 4 + 6 + 6;
+const BOARD_SIZE: usize = 2 + 4 + 4 + 6 + 6;
+
+#[derive(Serialize, Deserialize)]
+pub struct OnGoingGame
+{
+    pub game_object_id: String,
+    pub players:        [String; 2],
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Game
 {
     players: [Uuid; 2],
     board:   Board,
+}
+
+impl Game
+{
+    pub fn new(players: [Uuid; 2]) -> Self
+    {
+        Self {
+            players,
+            board: Board::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -36,6 +54,16 @@ enum BoardSquare
 pub struct Board
 {
     board: HashMap<Square, BoardPiece>,
+}
+
+impl Board
+{
+    fn new() -> Self
+    {
+        Self {
+            board: HashMap::with_capacity(BOARD_SIZE)
+        }
+    }
 }
 
 

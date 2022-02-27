@@ -48,7 +48,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             &mut orders.proxy(Msg::CreateGame),
         ),
 
-        Msg::Home(msg) => page::home::update(msg, model.page.as_home_mut().unwrap()),
+        Msg::Home(msg) => page::home::update(
+            msg,
+            model.page.as_home_mut().unwrap(),
+            &mut orders.proxy(Msg::Home),
+        ),
         Msg::Login { name } => model.user = Some(name),
     }
 }

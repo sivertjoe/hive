@@ -8,4 +8,4 @@ pub mod create_game_form;
 pub use create_game_form::*;
 
 pub mod game;
-pub use game::Game;
+pub use game::*;

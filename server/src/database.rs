@@ -1,23 +1,22 @@
+use futures::stream::StreamExt;
 use mongodb::{
-    bson::doc,
+    bson::{doc, from_document, oid::ObjectId},
     error::Error,
     options::{ClientOptions, Credential},
     Client, Database,
 };
-use shared::{
-    model::{CreateGameChallengeBundle, CreateGameForm, UserCredentials},
-    Uuid,
-};
+use shared::{model::*, Uuid};
 
-use crate::{create_game::CreateGame, user::User};
+use crate::user::User;
 
 
 pub const LIVE: &str = "live";
+pub const MAX_CREATE_GAME: u32 = 25;
 
 
 // collections types
 pub const USERS: &str = "users";
-pub const CREATE_GAME: &str = "create-game";
+pub const GAMES: &str = "games";
 
 
 #[derive(Debug)]
@@ -26,6 +25,8 @@ pub enum DatabaseError
     UserAlreadyExist,
     UserDontExist,
     DbError(mongodb::error::Error),
+    NoDocumentFound,
+    TooManyGames,
 }
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
@@ -90,13 +91,36 @@ pub async fn find_user_by_uuid(db: Database, uuid: Uuid) -> DatabaseResult<User>
         None => Err(DatabaseError::UserDontExist),
     }
 }
+async fn count_create_game(db: Database, uuid: Uuid) -> DatabaseResult<u32>
+{
+    let col = db.collection::<User>(USERS);
+    let sum = "sum";
+    let r#match = doc! { "$match": { "uuid": &uuid } };
+    let crit = doc! { "$project": { sum: { "$size": "$create_games" } } };
+
+    match col.aggregate([r#match, crit], None).await?.next().await
+    {
+        Some(doc) =>
+        {
+            let num = doc?.get(sum).unwrap().as_i32().unwrap() as u32;
+            Ok(num)
+        },
+        None => Err(DatabaseError::NoDocumentFound),
+    }
+}
 
 pub async fn create_game(db: Database, form: CreateGameForm) -> DatabaseResult<()>
 {
     let col = db.collection::<User>(USERS);
     let creator = form.creator;
+
+    if count_create_game(db, creator.clone()).await? > MAX_CREATE_GAME
+    {
+        return Err(DatabaseError::TooManyGames);
+    }
+
     let user = doc! { "uuid": &creator };
-    let update = doc! { "$push": { "create_game": uuid() } };
+    let update = doc! { "$push": { "create_games": uuid() } };
 
     match col.update_one(user, update, None).await
     {
@@ -105,23 +129,62 @@ pub async fn create_game(db: Database, form: CreateGameForm) -> DatabaseResult<(
     }
 }
 
+async fn remove_user_create_game(db: Database, creator: &str, game: &str) -> DatabaseResult<()>
+{
+    let col = db.collection::<User>(USERS);
+
+    col.update_one(doc! { "uuid": creator }, doc! { "$pull": { "create_games": game } }, None)
+        .await?;
+    Ok(())
+}
+
+async fn add_game_id_to_user(db: Database, id: ObjectId, user: Uuid) -> DatabaseResult<()>
+{
+    let col = db.collection::<User>(USERS);
+
+    let user = doc! { "uuid": &user };
+    let update = doc! { "$push": { "active_games": id } };
+
+    match col.update_one(user, update, None).await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> DatabaseResult<AcceptGame>
+{
+    let CreateGameFormResponse {
+        user,
+        game,
+        creator,
+    } = form;
+
+    remove_user_create_game(db.clone(), &creator, &game).await?;
+
+    let games = db.collection::<Game>(GAMES);
+    let id = games
+        .insert_one(Game::new([creator.clone(), user.clone()]), None)
+        .await?
+        .inserted_id
+        .as_object_id()
+        .unwrap();
+
+    add_game_id_to_user(db.clone(), id.clone(), creator).await?;
+    add_game_id_to_user(db.clone(), id.clone(), user).await?;
+
+    let accept = AcceptGame {
+        object_id: id.to_string(),
+        game,
+    };
+
+    Ok(accept)
+}
+
 pub async fn home(db: Database, uuid: Uuid) -> DatabaseResult<Vec<CreateGameChallengeBundle>>
 {
-    let mock = vec![
-        CreateGameChallengeBundle {
-            name:  "Sivert".into(),
-            games: vec![crate::uuid(), crate::uuid()],
-        },
-        CreateGameChallengeBundle {
-            name: "Bernt".into(), games: vec![crate::uuid()]
-        },
-    ];
-    return Ok(mock);
-
-
-    use futures::stream::StreamExt;
     let col = db.collection::<User>(USERS);
-    let filter = doc! { "creator": { "$not": uuid.as_str() } };
+    let filter = doc! { "uuid": { "$ne": uuid.as_str() } };
 
     Ok(col
         .find(filter, None)
@@ -130,12 +193,60 @@ pub async fn home(db: Database, uuid: Uuid) -> DatabaseResult<Vec<CreateGameChal
             let res = res.unwrap();
 
             CreateGameChallengeBundle {
-                name: res.name, games: res.create_game
+                name: res.name, games: res.create_games, uuid: res.uuid
             }
         })
         .collect::<Vec<_>>()
         .await)
 }
+
+
+//TODO: Whats the point of the uuid? just use the _id
+pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
+{
+    let col = db.collection::<Game>(GAMES);
+
+    Ok(col
+        .aggregate(
+            [
+                doc! {
+                    "$lookup": {
+                        "from": USERS,
+                        "localField": "players",
+                        "foreignField": "uuid",
+                        "as": "players"
+                    }
+                },
+                doc! {
+                    "$project": {
+                        "players": "$players.name"
+                    }
+                },
+            ],
+            None,
+        )
+        .await?
+        .map(|doc| {
+            let doc = doc.unwrap();
+
+            println!("{:?}", doc);
+            let mut players = doc
+                .get_array("players")
+                .unwrap()
+                .iter()
+                .map(|d| d.as_str().unwrap().to_string());
+
+            let players = [players.next().unwrap(), players.next().unwrap()];
+            let game_object_id = doc.get("_id").unwrap().as_object_id().unwrap().to_string();
+            OnGoingGame {
+                players,
+                game_object_id,
+            }
+        })
+        .collect()
+        .await)
+}
+
 
 pub fn hash(word: &str) -> String
 {
@@ -162,10 +273,9 @@ impl From<mongodb::error::Error> for DatabaseError
 #[cfg(test)]
 mod test
 {
-    use mongodb::{Collection, Database};
+    use mongodb::Database;
 
     use super::*;
-    use crate::user::User;
 
 
     struct Guard
@@ -311,7 +421,128 @@ mod test
         assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
         assert!(create_game(guard.db(), create_game_form).await.is_ok());
 
-        assert!(home(guard.database.clone(), creator).await?.len() == 2);
+        assert_eq!(home(guard.db(), creator).await?.len(), 0);
+
+        let new = reg(&guard, "sofie".into()).await?;
+        let games = home(guard.db(), new).await?;
+        assert_eq!(games[0].games.len(), 2);
+
+        Ok(())
+    }
+
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_count_create_game() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+
+        // Create user#1 and create one game
+        let uuid = reg(&guard, "sofie".into()).await?;
+        let create_game_form = CreateGameForm {
+            creator: uuid.clone()
+        };
+        assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
+
+
+        // Create user#2 and `n` games
+        let uuid = reg(&guard, "sivert".into()).await?;
+
+        let create_game_form = CreateGameForm {
+            creator: uuid.clone()
+        };
+        let n: u32 = 20;
+
+        for _ in 0..n
+        {
+            assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
+        }
+
+
+        assert_eq!(count_create_game(guard.db(), uuid).await?, n);
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_remove_create_game() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+        let creator = reg(&guard, "sivert".into()).await?;
+
+        let create_game_form = CreateGameForm {
+            creator: creator.clone()
+        };
+        assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
+
+        let uuid = reg(&guard, "sofie".into()).await?;
+        let games = home(guard.db(), uuid).await?;
+        let game = games[0].games[0].clone();
+
+        assert_eq!(find_user_by_uuid(guard.db(), creator.clone()).await?.create_games.len(), 1);
+        assert!(remove_user_create_game(guard.db(), &creator, &game).await.is_ok());
+
+        assert_eq!(find_user_by_uuid(guard.db(), creator.clone()).await?.create_games.len(), 0);
+
+
+        Ok(())
+    }
+
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_can_accept_game() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+
+        let creator = reg(&guard, "sivert".into()).await?;
+        let create_game_form = CreateGameForm {
+            creator: creator.clone()
+        };
+        assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
+
+        let uuid = reg(&guard, "sofie".into()).await?;
+        let games = home(guard.db(), uuid.clone()).await?;
+        let game = games[0].games[0].clone();
+
+        let form = CreateGameFormResponse {
+            creator: creator.clone(),
+            user: uuid.clone(),
+            game,
+        };
+
+        assert!(accept_game(guard.db(), form).await.is_ok());
+
+        let user = find_user_by_uuid(guard.db(), creator.clone()).await?;
+        assert_eq!(user.create_games.len(), 0);
+        assert_eq!(user.active_games.len(), 1);
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_can_get_active_games() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+
+        let creator = reg(&guard, "sivert".into()).await?;
+        let create_game_form = CreateGameForm {
+            creator: creator.clone()
+        };
+        assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
+
+        let uuid = reg(&guard, "sofie".into()).await?;
+        let games = home(guard.db(), uuid.clone()).await?;
+        let game = games[0].games[0].clone();
+
+        let form = CreateGameFormResponse {
+            creator: creator.clone(),
+            user: uuid.clone(),
+            game,
+        };
+
+        assert!(accept_game(guard.db(), form).await.is_ok());
+
+        let vec = get_active_games(guard.db()).await?;
+        assert_eq!(vec.len(), 1);
 
         Ok(())
     }

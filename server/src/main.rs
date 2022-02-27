@@ -18,6 +18,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 pub async fn main() -> Result<(), Error>
 {
     let client = connect().await?;
+    // client.database("live").drop(None).await;
 
     let make_svc = make_service_fn(|_| {
         let client = client.clone();

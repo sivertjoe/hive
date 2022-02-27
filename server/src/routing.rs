@@ -4,10 +4,12 @@ use hyper::{body, Body, Method, Request, Response};
 use shared::model::http::*;
 
 mod create_game;
+mod game;
 mod home;
 mod login;
 mod register;
 use create_game::create_game;
+use game::game;
 use home::home;
 use login::login;
 use mongodb::Client;
@@ -41,6 +43,11 @@ pub fn method_not_allowed() -> Body
     Body::from(ResponseBody::to_body(405, String::new()))
 }
 
+pub fn bad_request() -> Body
+{
+    Body::from(ResponseBody::to_body(400, String::new()))
+}
+
 pub fn error(error: crate::database::DatabaseError) -> Body
 {
     let body = _body(&format!("{error:?}"));
@@ -63,6 +70,7 @@ impl<T> CorsExt for Response<T>
         let headers = self.headers_mut();
         headers.insert("Access-Control-Allow-Headers", "Content-Type".parse().unwrap());
         headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
+        headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT".parse().unwrap());
         self
     }
 }
@@ -96,6 +104,7 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
         "/login" => login(req, client).await,
         "/create-game" => create_game(req, client).await,
         "/home" => home(req, client).await,
+        "/game" => game(req, client).await,
         _ => Response::new(not_found()),
     }
 }
