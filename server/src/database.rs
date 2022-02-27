@@ -173,6 +173,14 @@ mod test
         database: Database,
     }
 
+    impl Guard
+    {
+        fn db(&self) -> Database
+        {
+            self.database.clone()
+        }
+    }
+
     impl Drop for Guard
     {
         fn drop(&mut self)
@@ -205,7 +213,7 @@ mod test
             name,
             password: "password".into(),
         };
-        register_user(guard.database.clone(), cred).await
+        register_user(guard.db(), cred).await
     }
 
 
@@ -217,7 +225,7 @@ mod test
         let res = reg(&guard, "sivert".into()).await;
         assert!(res.is_ok());
 
-        let res = find_user_by_uuid(guard.database.clone(), res.unwrap()).await;
+        let res = find_user_by_uuid(guard.db(), res.unwrap()).await;
         assert!(res.is_ok());
 
         Ok(())
@@ -232,13 +240,13 @@ mod test
             name: "sivert".into(), password: "password".into()
         };
 
-        let res = find_user_by_uuid(guard.database.clone(), "totaly-a-uuid".to_string()).await;
+        let res = find_user_by_uuid(guard.db(), "totaly-a-uuid".to_string()).await;
         assert!(matches!(res, Err(DatabaseError::UserDontExist)));
 
-        let res = register_user(guard.database.clone(), cred.clone()).await;
+        let res = register_user(guard.db(), cred.clone()).await;
         assert!(res.is_ok());
 
-        let res = register_user(guard.database.clone(), cred).await;
+        let res = register_user(guard.db(), cred).await;
         assert!(matches!(res, Err(DatabaseError::UserAlreadyExist)));
 
         Ok(())
@@ -251,7 +259,7 @@ mod test
         let cred = UserCredentials {
             name: "sivert".into(), password: "password".into()
         };
-        let res = login(guard.database.clone(), cred).await;
+        let res = login(guard.db(), cred).await;
         assert!(matches!(res, Err(DatabaseError::UserDontExist)));
 
         Ok(())
@@ -266,9 +274,9 @@ mod test
             name: "sivert".into(), password: "password".into()
         };
 
-        let reg_uuid = register_user(guard.database.clone(), cred.clone()).await?;
+        let reg_uuid = register_user(guard.db(), cred.clone()).await?;
 
-        let res = login(guard.database.clone(), cred).await;
+        let res = login(guard.db(), cred).await;
         assert!(res.is_ok());
         let log_uuid = res.unwrap();
 
@@ -287,7 +295,7 @@ mod test
         let create_game_form = CreateGameForm {
             creator,
         };
-        assert!(create_game(guard.database.clone(), create_game_form).await.is_ok());
+        assert!(create_game(guard.db(), create_game_form).await.is_ok());
         Ok(())
     }
 
@@ -300,8 +308,8 @@ mod test
         let create_game_form = CreateGameForm {
             creator: creator.clone()
         };
-        assert!(create_game(guard.database.clone(), create_game_form.clone()).await.is_ok());
-        assert!(create_game(guard.database.clone(), create_game_form).await.is_ok());
+        assert!(create_game(guard.db(), create_game_form.clone()).await.is_ok());
+        assert!(create_game(guard.db(), create_game_form).await.is_ok());
 
         assert!(home(guard.database.clone(), creator).await?.len() == 2);
 
