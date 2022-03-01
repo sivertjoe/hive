@@ -1,16 +1,16 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
-use shared::{model::UserCredentials, Uuid};
+use shared::model::UserCredentials;
 
-use crate::database::{hash, uuid};
+use crate::database::hash;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User
 {
+    pub _id:           ObjectId,
     pub name:          String,
     pub password_hash: String,
-    pub uuid:          Uuid,
-    pub create_games:  Vec<Uuid>,
+    pub create_games:  Vec<ObjectId>,
     pub active_games:  Vec<ObjectId>,
 }
 
@@ -24,9 +24,9 @@ impl User
         } = cred;
 
         Self {
+            _id: ObjectId::new(),
             name,
             password_hash: hash(&password),
-            uuid: uuid(),
             create_games: Vec::new(),
             active_games: Vec::new(),
         }

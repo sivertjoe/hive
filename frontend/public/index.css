@@ -44,6 +44,10 @@ body {
   --purple: #52207e;
   --olive: #0f3f3f;
 
+  --hex-size: 50px;
+
+
+
   color: var(--primary-color);
   background-color: var(--background-color);
 }
@@ -99,18 +103,24 @@ td {
   border-radius: 1rem;
   padding: 2rem 2rem;
 }
+.hexcontainer {
+    display: flex;
+     flex-direction: column;
+     align-items: center;
+   }
 
-.table-container {
-  text-align: center;
-  width: 50%;
-  margin: auto auto;
-  max-height: 60vh;
-  overflow-y: scroll;
-  border: solid 1px var(--primary-color);
-  border-radius: 0.5rem;
-  border-spacing: 1rem;
-}
+   .hex-row {
+     margin-bottom: -20px;
+   }
 
-.center {
-  text-align: center;
-}
+   .hexagon {
+     display: inline-block;
+     width: var(--hex-size);
+     height: var(--hex-size);
+     background: grey;
+     -webkit-clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+     margin: 4px;
+   }
+   .hexagon:hover {
+     background: red;
+   }

@@ -4,7 +4,7 @@ use shared::model::{
     CreateGameChallenge, CreateGameChallengeBundle, CreateGameFormResponse, OnGoingGame,
     ResponseBody,
 };
-use shared::Uuid;
+use shared::ObjectId;
 
 use crate::Msg::Home;
 pub struct Model {
@@ -15,13 +15,17 @@ pub struct Model {
 
 pub fn init(orders: &mut impl Orders<Msg>) -> Model {
     orders.skip().perform_cmd(async {
-        let uuid = LocalStorage::get("uuid").unwrap_or_else(|_| String::new());
-        Msg::FetchedCreateGame(send_message(uuid, "home", Method::Post).await)
+        let id = LocalStorage::get("id").unwrap_or_else(|_| String::new());
+        Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
     });
 
     orders
         .skip()
-        .perform_cmd(async { Msg::FetchedAvailableGames(get_all_games().await) });
+        .perform_cmd(async { Msg::FetchedAvailableGames(get_all_games().await) })
+        .perform_cmd(async {
+            let id = LocalStorage::get("id").unwrap_or_else(|_| String::new());
+            Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
+        });
 
     Model {
         available_games: Vec::new(),
@@ -34,12 +38,16 @@ fn challenge_from_bundle(bundle: Vec<CreateGameChallengeBundle>) -> Vec<CreateGa
     bundle
         .into_iter()
         .flat_map(|user| {
-            let CreateGameChallengeBundle { name, games, uuid } = user;
+            let CreateGameChallengeBundle {
+                name,
+                games,
+                creator_id,
+            } = user;
 
-            games.into_iter().map(move |game_uuid| CreateGameChallenge {
+            games.into_iter().map(move |game_id| CreateGameChallenge {
                 name: name.clone(),
-                uuid: game_uuid,
-                creator: uuid.clone(),
+                _id: game_id,
+                creator: creator_id.clone(),
             })
         })
         .collect()
@@ -47,7 +55,7 @@ fn challenge_from_bundle(bundle: Vec<CreateGameChallengeBundle>) -> Vec<CreateGa
 
 pub enum Msg {
     FetchedCreateGame(fetch::Result<String>),
-    AcceptGame { game: Uuid, creator: Uuid },
+    AcceptGame { game: ObjectId, creator: ObjectId },
     AcceptedGame(fetch::Result<String>),
     FetchedAvailableGames(fetch::Result<String>),
 }
@@ -73,12 +81,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.label = Some(format!("error: {text:?}"));
         }
 
-        Msg::AcceptGame { game, creator } => match LocalStorage::get("uuid").ok() {
-            Some(uuid) => {
+        Msg::AcceptGame { game, creator } => match LocalStorage::get("id").ok() {
+            Some(id) => {
                 let form = CreateGameFormResponse {
                     game,
                     creator,
-                    user: uuid,
+                    user: id,
                 };
 
                 orders.skip().perform_cmd(async {
@@ -97,7 +105,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let idx = model
                         .available_games
                         .iter()
-                        .position(|g| g.uuid == accept.game)
+                        .position(|g| g._id == accept.game)
                         .unwrap();
 
                     let game = model.available_games.remove(idx);
@@ -122,9 +130,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FetchedAvailableGames(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text) {
             Ok(resp) => match resp.status {
                 200 => {
-                    log("huh?");
                     let games: Vec<OnGoingGame> = resp.get_body();
-                    log("huh!");
                     model.ongoing_games = games;
                 }
                 e => {
@@ -167,7 +173,7 @@ where
 
 fn challenge<Ms: 'static>(game: &CreateGameChallenge) -> Node<Ms> {
     let creator = game.creator.clone();
-    let game = game.uuid.clone();
+    let game = game._id.clone();
     button![
         C!("button accept-button"),
         "Accept",
@@ -194,7 +200,15 @@ fn available_games<Ms: 'static>(model: &Model) -> Node<Ms> {
 }
 
 fn ongoing_game<Ms: 'static>(game: &OnGoingGame) -> Node<Ms> {
-    tr![td![&game.players[0]], td![&game.players[1]],]
+    let id = game.game_object_id.clone();
+    let url = Url::new().add_path_part("game").add_path_part(&id);
+    tr![
+        a![
+            attrs! { At::Href => url },
+            td![attrs! { At::Width => "50%" }, &game.players[0]]
+        ],
+        td![attrs! { At::Width => "50%" }, &game.players[1]],
+    ]
 }
 
 fn ongoing_games<Ms: 'static>(model: &Model) -> Option<Node<Ms>> {

@@ -1,6 +1,7 @@
 use seed::prelude::*;
 
 pub mod create;
+pub mod game;
 pub mod home;
 pub mod login;
 pub mod register;
@@ -13,6 +14,7 @@ pub enum Page {
     Login(login::Model),
     Register(register::Model),
     Create(create::Model),
+    Game(game::Model),
 
     NotFound,
 }
@@ -24,6 +26,7 @@ impl Page {
             Some("login") => login::init(url).map_or(Self::NotFound, Self::Login),
             Some("register") => register::init(url).map_or(Self::NotFound, Self::Register),
             Some("create") => Self::Create(create::init()),
+            Some("game") => game::init(url).map_or(Self::NotFound, Self::Game),
             Some(_) => Self::NotFound,
         }
     }

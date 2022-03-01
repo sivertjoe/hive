@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
+use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
-
-use crate::Uuid;
-
 
 /*
  * According to the rules: https://www.ultraboardgames.com/hive/game-rules.php
@@ -28,13 +26,13 @@ pub struct OnGoingGame
 #[derive(Serialize, Deserialize)]
 pub struct Game
 {
-    players: [Uuid; 2],
+    players: [ObjectId; 2],
     board:   Board,
 }
 
 impl Game
 {
-    pub fn new(players: [Uuid; 2]) -> Self
+    pub fn new(players: [ObjectId; 2]) -> Self
     {
         Self {
             players,

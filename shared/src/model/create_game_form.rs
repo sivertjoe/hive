@@ -1,19 +1,12 @@
+use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
-
-use crate::Uuid;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct CreateGameForm
-{
-    pub creator: Uuid,
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CreateGameFormResponse
 {
-    pub game:    Uuid,
-    pub creator: Uuid,
-    pub user:    Uuid,
+    pub game:    ObjectId,
+    pub creator: ObjectId,
+    pub user:    ObjectId,
 }
 
 
@@ -21,16 +14,16 @@ pub struct CreateGameFormResponse
 pub struct CreateGameChallenge
 {
     pub name:    String,
-    pub creator: Uuid,
-    pub uuid:    Uuid,
+    pub creator: ObjectId,
+    pub _id:     ObjectId,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateGameChallengeBundle
 {
-    pub name:  String,
-    pub uuid:  Uuid,
-    pub games: Vec<Uuid>,
+    pub name:       String,
+    pub creator_id: ObjectId,
+    pub games:      Vec<ObjectId>,
 }
 
 
@@ -38,5 +31,5 @@ pub struct CreateGameChallengeBundle
 pub struct AcceptGame
 {
     pub object_id: String,
-    pub game:      Uuid,
+    pub game:      ObjectId,
 }

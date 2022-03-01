@@ -1,2 +1,3 @@
 pub mod model;
-pub type Uuid = String;
+
+pub use bson::oid::ObjectId;

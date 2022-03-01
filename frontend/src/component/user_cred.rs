@@ -2,6 +2,7 @@ use seed::{self, prelude::*, *};
 use shared::model::{http::*, UserCredentials};
 
 use crate::Msg::{Login, UserCred};
+use shared::ObjectId;
 
 pub fn init(text: String, (end_point, success_code): (String, u32)) -> Model {
     Model {
@@ -65,9 +66,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<crate::Msg>)
             Ok(resp) => match resp.status {
                 code if code == model.success_code => {
                     model.status_text = Some(Status::Success("Success".into()));
-                    let uuid: String = resp.get_body();
+                    let id: ObjectId = resp.get_body();
                     let name = &model.form.name;
-                    LocalStorage::insert("uuid", &uuid).expect("inserting uuid in LocalStorage");
+                    LocalStorage::insert("id", &id).expect("inserting id in LocalStorage");
                     LocalStorage::insert("name", &name).expect("inserting name in LocalStorage");
                     orders.send_msg(Login {
                         name: model.form.name.clone(),

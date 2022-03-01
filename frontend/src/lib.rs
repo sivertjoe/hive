@@ -1,4 +1,5 @@
 use seed::{prelude::*, *};
+use shared::ObjectId;
 
 mod component;
 mod page;
@@ -40,7 +41,10 @@ fn get_user_cred(model: &mut Model) -> &mut component::user_cred::Model {
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url, orders),
+        Msg::UrlChanged(subs::UrlChanged(url)) => {
+            log(format!("test!, {url:?}"));
+            model.page = Page::init(url, orders)
+        }
         Msg::UserCred(msg) => component::user_cred::update(msg, get_user_cred(model), orders),
         Msg::CreateGame(msg) => page::create::update(
             msg,
@@ -67,6 +71,7 @@ fn view(model: &Model) -> Node<Msg> {
                 Page::Login(model) => page::login::view(model),
                 Page::Register(model) => page::register::view(model),
                 Page::Create(model) => page::create::view(model),
+                Page::Game(model) => page::game::view(model),
                 Page::NotFound => div!["404"],
             }
         ]
@@ -90,6 +95,10 @@ impl<'a> Urls<'a> {
     }
     pub fn user(self, user: &str) -> Url {
         self.base_url().add_path_part("user").add_path_part(user)
+    }
+    pub fn game(self, game_id: &ObjectId) -> Url {
+        self.base_url()
+            .add_path_part(format!("game?q={}", game_id.to_string()))
     }
 }
 

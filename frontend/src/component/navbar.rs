@@ -3,6 +3,7 @@ use seed::{prelude::*, *};
 use crate::{Model, Msg, Urls};
 
 fn create_link(text: &str, url: Url) -> Node<Msg> {
+    log(format!("{:?}", url));
     h2![a![text, attrs! { At::Href => url }]]
 }
 

@@ -8,6 +8,8 @@ pub fn init(_url: Url) -> Option<Model> {
     })
 }
 
+pub fn update(model: &mut Model) {}
+
 pub struct Model {
     pub user_cred: user_cred::Model,
 }
