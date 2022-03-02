@@ -30,6 +30,6 @@ pub struct CreateGameChallengeBundle
 #[derive(Serialize, Deserialize)]
 pub struct AcceptGame
 {
-    pub object_id: String,
+    pub object_id: ObjectId,
     pub game:      ObjectId,
 }

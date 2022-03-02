@@ -2,7 +2,7 @@ use hyper::{Body, Method, Request, Response};
 use mongodb::{bson::oid::ObjectId, Client};
 
 use super::{bad_request, method_not_allowed, ok};
-use crate::database::{get_active_games, LIVE};
+use crate::database::{get_active_games, get_game_by_id, LIVE};
 
 
 enum Query
@@ -53,7 +53,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
                 },
                 Query::Id(object_id) =>
                 {
-                    let res = get_active_games(client.database(LIVE)).await.unwrap();
+                    let res = get_game_by_id(client.database(LIVE), object_id).await.unwrap();
                     Response::new(ok(res))
                 },
             },

@@ -103,24 +103,19 @@ td {
   border-radius: 1rem;
   padding: 2rem 2rem;
 }
-.hexcontainer {
-    display: flex;
-     flex-direction: column;
-     align-items: center;
-   }
 
-   .hex-row {
-     margin-bottom: -20px;
-   }
 
-   .hexagon {
-     display: inline-block;
-     width: var(--hex-size);
-     height: var(--hex-size);
-     background: grey;
-     -webkit-clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-     margin: 4px;
-   }
-   .hexagon:hover {
-     background: red;
-   }
+/* grid styling */
+use {
+  transition: 0.4s;
+  cursor: pointer;
+  fill: transparent;
+}
+.pod-wrap use:hover {
+  fill: #000000;
+}
+
+/* other styling */
+svg {
+  flex: 1;
+}

@@ -27,7 +27,7 @@ pub enum Msg {
     UserCred(component::user_cred::Msg),
     CreateGame(page::create::Msg),
     Home(page::home::Msg),
-
+    Game(page::game::Msg),
     Login { name: String },
 }
 
@@ -41,10 +41,7 @@ fn get_user_cred(model: &mut Model) -> &mut component::user_cred::Model {
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::UrlChanged(subs::UrlChanged(url)) => {
-            log(format!("test!, {url:?}"));
-            model.page = Page::init(url, orders)
-        }
+        Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url, orders),
         Msg::UserCred(msg) => component::user_cred::update(msg, get_user_cred(model), orders),
         Msg::CreateGame(msg) => page::create::update(
             msg,
@@ -57,6 +54,13 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.page.as_home_mut().unwrap(),
             &mut orders.proxy(Msg::Home),
         ),
+
+        Msg::Game(msg) => page::game::update(
+            msg,
+            model.page.as_game_mut().unwrap(),
+            &mut orders.proxy(Msg::Game),
+        ),
+
         Msg::Login { name } => model.user = Some(name),
     }
 }

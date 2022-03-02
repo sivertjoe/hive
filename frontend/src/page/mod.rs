@@ -26,7 +26,8 @@ impl Page {
             Some("login") => login::init(url).map_or(Self::NotFound, Self::Login),
             Some("register") => register::init(url).map_or(Self::NotFound, Self::Register),
             Some("create") => Self::Create(create::init()),
-            Some("game") => game::init(url).map_or(Self::NotFound, Self::Game),
+            Some("game") => game::init(url, &mut orders.proxy(crate::Msg::Game))
+                .map_or(Self::NotFound, Self::Game),
             Some(_) => Self::NotFound,
         }
     }

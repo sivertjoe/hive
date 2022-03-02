@@ -14,11 +14,6 @@ pub struct Model {
 }
 
 pub fn init(orders: &mut impl Orders<Msg>) -> Model {
-    orders.skip().perform_cmd(async {
-        let id = LocalStorage::get("id").unwrap_or_else(|_| String::new());
-        Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
-    });
-
     orders
         .skip()
         .perform_cmd(async { Msg::FetchedAvailableGames(get_all_games().await) })
@@ -111,7 +106,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let game = model.available_games.remove(idx);
                     let name = LocalStorage::get("name").unwrap();
                     model.ongoing_games.push(OnGoingGame {
-                        game_object_id: accept.object_id,
+                        game_object_id: accept.object_id.to_string(),
                         players: [game.name, name],
                     });
                 }

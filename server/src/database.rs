@@ -182,7 +182,7 @@ pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> Database
     add_game_id_to_users(db.clone(), &id, &creator, &user).await?;
 
     let accept = AcceptGame {
-        object_id: id.to_string(),
+        object_id: id,
         game,
     };
 
@@ -257,6 +257,17 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
 }
 
 
+pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<Game>
+{
+    let col = db.collection::<Game>(GAMES);
+    match col.find_one(doc! { "_id": id }, None).await?
+    {
+        Some(game) => Ok(game),
+        None => Err(DatabaseError::NoDocumentFound),
+    }
+}
+
+
 pub fn hash(word: &str) -> String
 {
     use sha2::{Digest, Sha256};
@@ -328,6 +339,28 @@ mod test
             password: "password".into(),
         };
         register_user(guard.db(), cred).await
+    }
+
+    async fn create_users_and_game(guard: &Guard)
+        -> DatabaseResult<(ObjectId, ObjectId, ObjectId)>
+    {
+        let u1 = reg(guard, "sivert".into()).await?;
+        let u2 = reg(guard, "sofie".into()).await?;
+
+        create_game(guard.db(), u1.clone()).await?;
+
+        let games = home(guard.db(), u2.clone()).await?;
+        let game = games[0].games[0].clone();
+
+        let form = CreateGameFormResponse {
+            creator: u1.clone(),
+            user: u2.clone(),
+            game,
+        };
+
+        let game = accept_game(guard.db(), form).await?.object_id;
+
+        Ok((u1, u2, game))
     }
 
 
@@ -527,6 +560,29 @@ mod test
 
         let vec = get_active_games(guard.db()).await?;
         assert_eq!(vec.len(), 1);
+
+        Ok(())
+    }
+
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cannot_get_non_existing_game() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+
+        let res = get_game_by_id(guard.db(), ObjectId::new()).await;
+        assert!(matches!(res, Err(DatabaseError::NoDocumentFound)));
+        Ok(())
+    }
+
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_can_get_game() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+        let (_, _, game_id) = create_users_and_game(&guard).await?;
+
+        assert!(get_game_by_id(guard.db(), game_id).await.is_ok());
 
         Ok(())
     }
