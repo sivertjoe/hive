@@ -2,12 +2,35 @@ use seed::{self, prelude::*, *};
 use shared::model::{Game, ResponseBody};
 use shared::ObjectId;
 
+fn create_grid(size: &str) -> Vec<Node<crate::Msg>> {
+    let deltas = |n: f32| (15. * n, 9. * n);
+
+    let (dx, dy) = deltas(0.5);
+
+    (0..=4)
+        .map(|n| draw_circle(n, dx, dy, &size))
+        .flatten()
+        .collect()
+}
+
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
             Ok(id) => {
                 orders.perform_cmd(async move { Msg::FetchGame(send_message(id).await) });
-                Some(Model::default())
+                let gen_size = |n: f32| {
+                    let l = 5. * n;
+                    let h = 9. * n;
+                    let w = 10. * n;
+
+                    format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
+                };
+                let size = gen_size(0.5);
+                Some(Model {
+                    game: None,
+                    grid: create_grid(&size),
+                    size,
+                })
             }
             _ => None,
         },
@@ -46,16 +69,27 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FetchGame(Err(text)) => {
             // handle
         }
+        Msg::ClickHex(idx) => {
+            let node = &mut model.grid[idx];
+            if let Node::Element(ref mut el) = node {
+                let at = &mut el.attrs;
+                at.add(At::Fill, "green");
+            } else {
+            }
+        }
     }
 }
 
 pub enum Msg {
     FetchGame(fetch::Result<String>),
+    ClickHex(usize),
 }
 
 #[derive(Default)]
 pub struct Model {
     game: Option<Game>,
+    grid: Vec<Node<crate::Msg>>,
+    size: String,
 }
 
 /* For a number `n`, the number of hexagon is
@@ -66,46 +100,76 @@ pub struct Model {
  * hexagon-height = 2n - 1
  */
 
-fn hex<Ms: 'static>(x: f32, y: f32, id: i32) -> Node<Ms> {
+fn hex<Ms: 'static>(x: f32, y: f32, id: usize) -> Node<Ms> {
     r#use![
         attrs! {
             At::Href => "#pod",
             At::Transform => format!("translate({x}, {y})"),
         },
         ev(Ev::Click, move |event| {
-            log(format!("{id}"));
+            crate::Msg::Game(Msg::ClickHex(id))
         })
     ]
 
     // <use xlink:href="#pod" transform="translate(50, 41)"/>
 }
 
-pub fn grid<Ms: 'static>(model: &Model) -> Node<Ms> {
-    let rows = 12;
-    let cols = 10;
+struct HexIter {
+    n: usize,
+    it: usize,
+}
 
-    let gen_size = |n: f32| {
-        let l = 5. * n;
-        let h = 9. * n;
-        let w = 10. * n;
+impl HexIter {
+    fn new(n: usize) -> Self {
+        HexIter { n, it: 0 }
+    }
+}
 
-        format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
-    };
+impl Iterator for HexIter {
+    type Item = (f32, f32);
 
-    let start_points = |n: f32| ((5. + 1.) * n * 2., (9. + 1.) * 2. * n);
-    let deltas = |n: f32| (15. * n, 9. * n);
+    fn next(&mut self) -> Option<Self::Item> {
+        const SEQ: [(f32, f32); 6] = [
+            (0.5, 0.5),
+            (0.0, 1.0),
+            (-0.5, 0.5),
+            (-0.5, -0.5),
+            (0.0, -1.0),
+            (0.5, -0.5),
+        ];
 
-    let (x, y) = start_points(0.5);
-    let (dx, dy) = deltas(0.5);
-    let size = gen_size(0.5);
+        if self.it < 6 * self.n {
+            let idx = self.it / self.n;
+            self.it += 1;
+            Some(SEQ[idx])
+        } else {
+            None
+        }
+    }
+}
 
-    let hexes = (0..rows * cols).map(|i| {
-        let x = x + ((i % rows) as f32 * dx);
-        let y = ((i / rows) as f32 * 2. * dy) + y + if i & 1 == 0 { -dy } else { 0. };
-        //let y = i / cols;*/
-        hex(x, y, i)
-    });
+fn draw_circle<Ms: 'static>(n: usize, dx: f32, dy: f32, size: &str) -> Vec<Node<Ms>> {
+    let (cx, cy) = (50., 50.);
+    if n == 0 {
+        vec![hex(cy, cy, 0)]
+    } else {
+        let mut id = 6 * n;
+        let mut sy = cy - (n as f32 * dy * 2.);
+        let mut sx = cx;
+        HexIter::new(n)
+            .into_iter()
+            .map(|(zx, zy)| {
+                let r = hex(sx, sy, n);
+                sx += 2. * dx * zx;
+                sy += 2. * dy * zy;
+                id += 1;
+                r
+            })
+            .collect::<Vec<_>>()
+    }
+}
 
+pub fn grid(model: &Model) -> Node<crate::Msg> {
     svg![
         attrs! {
             At::ViewBox => "0 0 100 100"
@@ -115,18 +179,18 @@ pub fn grid<Ms: 'static>(model: &Model) -> Node<Ms> {
             polygon![attrs! {
                 At::Stroke => "gold",
                 At::StrokeWidth => ".5",
-                At::Points => size,
-            }]
+                At::Points => &model.size,
+            },]
         ]],
         g![
             attrs! {
                 At::Class => "pod-wrap"
             },
-            hexes,
+            &model.grid
         ]
     ]
 }
 
-pub fn view<Ms: 'static>(model: &Model) -> Node<Ms> {
+pub fn view(model: &Model) -> Node<crate::Msg> {
     div![C!("container"), grid(model),]
 }
