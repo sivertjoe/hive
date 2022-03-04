@@ -12,6 +12,7 @@ pub struct Model {
     game: Option<Game>,
     grid: Vec<Node<crate::Msg>>,
     size: String,
+    label: Option<String>,
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
@@ -31,6 +32,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     game: None,
                     grid: create_grid(2),
                     size,
+                    label: None,
                 })
             }
             _ => None,
@@ -49,16 +51,16 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
 
                 e => {
-                    // handle
+                    model.label = Some(format!("expected 200 got {e}"));
                 }
             },
             Err(e) => {
-                // handle
+                model.label = Some(format!("serde error: {e}"));
             }
         },
 
         Msg::FetchGame(Err(text)) => {
-            // handle
+            model.label = Some(format!("http error: {text:?}"));
         }
         Msg::ClickHex(idx) => {
             let node = &mut model.grid[idx];
@@ -72,7 +74,14 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
-    div![C!("container"), grid(model),]
+    div![
+        C!("container"),
+        grid(model),
+        IF!(model.label.is_some() => match model.label {
+            Some(ref s) => h2! [C!("error"), s],
+            _ => unreachable!()
+        })
+    ]
 }
 
 async fn send_message(id: ObjectId) -> fetch::Result<String> {
