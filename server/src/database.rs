@@ -173,7 +173,7 @@ pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> Database
     let games = db.collection::<Game>(GAMES);
 
     let id = games
-        .insert_one(Game::new([creator.clone(), user.clone()]), None)
+        .insert_one(Game::new([creator, user]), None)
         .await?
         .inserted_id
         .as_object_id()
