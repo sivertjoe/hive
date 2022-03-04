@@ -1,6 +1,6 @@
 use futures::stream::StreamExt;
 use mongodb::{
-    bson::{doc, oid::ObjectId},
+    bson::{self, doc, oid::ObjectId},
     error::Error,
     options::{ClientOptions, Credential},
     Client, Database,
@@ -216,6 +216,32 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
 {
     let col = db.collection::<Game>(GAMES);
 
+
+    /* Explanation:
+     * First, fetch all games.
+     * Then, do a lookup, aka (SQL) join. The syntax is
+     *
+     * from: join from which collection
+     * localField: the field in the main collection you want to join on
+     * foreignField: the key in to OTHER collection you want to join on
+     * as: (evt) rename the thing
+     *
+     * However, the lookup gives us the whole users object, aka
+     * "players": [
+     * {"_id": "...",
+     * "name, "Sivert"},
+     * {"_id": "...",
+     * "name": "Bernt"}]
+     *
+     * And we _only_ want the names.
+     *
+     * Therefore, we do a project where we `snatch` _only_ the player name out of
+     * the object
+     *
+     */
+
+
+    use futures::stream;
     Ok(col
         .aggregate(
             [
@@ -236,21 +262,9 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
             None,
         )
         .await?
-        .map(|doc| {
+        .flat_map(|doc| {
             let doc = doc.unwrap();
-
-            let mut players = doc
-                .get_array("players")
-                .unwrap()
-                .iter()
-                .map(|d| d.as_str().unwrap().to_string());
-
-            let players = [players.next().unwrap(), players.next().unwrap()];
-            let game_object_id = doc.get("_id").unwrap().as_object_id().unwrap().to_string();
-            OnGoingGame {
-                players,
-                game_object_id,
-            }
+            stream::iter(bson::from_document::<OnGoingGame>(doc))
         })
         .collect()
         .await)
