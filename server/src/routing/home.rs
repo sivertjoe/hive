@@ -12,7 +12,7 @@ pub async fn home(req: Request<Body>, client: Client) -> Response<Body>
         {
             // Just generate and use a new ObjectId if none was received, i.e,
             // user was not logged in
-            let uuid = get_body::<ObjectId>(req).await.unwrap_or_else(|| ObjectId::new());
+            let uuid = get_body::<ObjectId>(req).await.unwrap_or_else(ObjectId::new);
 
             match database::home(client.database(LIVE), uuid).await
             {
