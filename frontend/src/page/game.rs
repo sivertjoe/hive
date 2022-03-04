@@ -15,6 +15,10 @@ pub struct Model {
     label: Option<String>,
 }
 
+/* NOTE
+ * we must use `gen_size` number in create_grid!!!
+ */
+
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     let gen_size = |n: f32| {
         let l = 5. * n;
