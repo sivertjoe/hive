@@ -188,11 +188,6 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
                 At::Points => &model.size,
             },]
         ]],
-        g![
-            attrs! {
-                At::Class => "pod-wrap"
-            },
-            &model.grid
-        ]
+        g![&model.grid]
     ]
 }

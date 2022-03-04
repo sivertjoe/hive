@@ -107,12 +107,8 @@ td {
 
 /* grid styling */
 use {
-  transition: 0.4s;
   cursor: pointer;
   /* fill: transparent; */
-}
-.pod-wrap use:hover {
-  fill: #000000;
 }
 
 /* other styling */
