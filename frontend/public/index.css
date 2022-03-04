@@ -115,3 +115,10 @@ use {
 svg {
   flex: 1;
 }
+
+
+
+.piece-menu {
+    background-color: var(--background-color);
+    border-radius: 1rem;
+}

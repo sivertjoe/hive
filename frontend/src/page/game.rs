@@ -64,7 +64,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         },
 
         Msg::FetchGame(Err(text)) => {
-            model.label = Some(format!("http error: {text:?}"));
+            // model.label = Some(format!("http error: {text:?}"));
         }
         Msg::ClickHex(idx) => {
             let node = &mut model.grid[idx];
@@ -78,14 +78,15 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
-    div![
+    div![div![
         C!("container"),
         grid(model),
+        div![C!("piece-menu"), piece_menu(model)],
         IF!(model.label.is_some() => match model.label {
             Some(ref s) => h2! [C!("error"), s],
             _ => unreachable!()
         })
-    ]
+    ]]
 }
 
 async fn send_message(id: ObjectId) -> fetch::Result<String> {
@@ -185,6 +186,43 @@ fn hex(x: f32, y: f32, id: usize) -> Node<crate::Msg> {
             event.prevent_default();
             crate::Msg::Game(Msg::ClickHex(id))
         })
+    ]
+}
+
+fn piece_hex(x: f32, y: f32, id: usize) -> Node<crate::Msg> {
+    r#use![
+        attrs! {
+            At::Href => "#pod",
+            At::Transform => format!("translate({x}, {y})"),
+            At::Fill => "transparent",
+        },
+        ev(Ev::Click, move |event| {
+            event.prevent_default();
+            crate::Msg::Game(Msg::ClickHex(id))
+        })
+    ]
+}
+
+fn piece_menu(model: &Model) -> Node<crate::Msg> {
+    let deltas = |n: f32| (15. * n, 9. * n);
+    let (dx, dy) = deltas(0.5);
+
+    svg![
+        attrs! {
+            At::ViewBox => "0 0 100 15"
+        },
+        defs![g![
+            attrs! { At::Id => "pod" },
+            polygon![attrs! {
+                At::Stroke => "red",
+                At::StrokeWidth => ".5",
+                At::Points => &model.size,
+            },]
+        ]],
+        piece_hex(dx, 1.5 * dy, 0),
+        piece_hex(4.5 * dx, 1.5 * dy, 0),
+        piece_hex(12.0 * dx, 1.5 * dy, 0),
+        piece_hex(8.0 * dx, 1.5 * dy, 0),
     ]
 }
 
