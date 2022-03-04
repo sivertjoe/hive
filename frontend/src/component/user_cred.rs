@@ -1,7 +1,7 @@
 use seed::{self, prelude::*, *};
 use shared::model::{http::*, UserCredentials};
 
-use crate::Msg::{Login, UserCred};
+use crate::Msg::Login;
 use shared::ObjectId;
 
 pub fn init(text: String, (end_point, success_code): (String, u32)) -> Model {
@@ -45,15 +45,19 @@ async fn send_message(end_point: String, form: UserCredentials) -> fetch::Result
         .await
 }
 
-pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<crate::Msg>) {
+pub fn update(
+    msg: Msg,
+    model: &mut Model,
+    orders: &mut impl Orders<crate::Msg>,
+    to_msg: impl FnOnce(Msg) -> crate::Msg + Clone + 'static,
+) {
     match msg {
         Msg::Submit => {
             let form = model.form.clone();
             let end_point = model.end_point.clone();
             orders
-                .proxy(UserCred)
                 .skip()
-                .perform_cmd(async { Msg::Fetched(send_message(end_point, form).await) });
+                .perform_cmd(async { to_msg(Msg::Fetched(send_message(end_point, form).await)) });
         }
         Msg::NameChanged(name) => {
             model.form.name = name;
@@ -91,31 +95,30 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<crate::Msg>)
     }
 }
 
-/* @NOTE:
- * Why do I have to write crate::Msg::Register.. instead of must
- * Msg::Submit??
- */
-pub fn view<Ms: 'static>(model: &Model) -> Node<Ms> {
+pub fn view(
+    model: &Model,
+    to_msg: impl Fn(Msg) -> crate::Msg + Clone + Copy + 'static,
+) -> Node<crate::Msg> {
     form![
         C!["container"],
         h1![&model.text],
-        ev(Ev::Submit, |event| {
+        ev(Ev::Submit, move |event| {
             event.prevent_default();
-            UserCred(Msg::Submit)
+            to_msg(Msg::Submit)
         }),
         div![
             C!("inputs"),
             input![
                 C!("inputs"),
                 attrs! { At::Value => model.form.name, At::Placeholder => "name" },
-                input_ev(Ev::Input, |name| { UserCred(Msg::NameChanged(name)) }),
+                input_ev(Ev::Input, move |name| { to_msg(Msg::NameChanged(name)) }),
             ],
             br!(),
             br!(),
             input![
                 attrs! { At::Value => model.form.password, At::Type => "password", At::Placeholder => "password" },
-                input_ev(Ev::Input, |password| {
-                    UserCred(Msg::PasswordChanged(password))
+                input_ev(Ev::Input, move |password| {
+                    to_msg(Msg::PasswordChanged(password))
                 }),
             ]
         ],

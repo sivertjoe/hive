@@ -24,25 +24,18 @@ pub struct Model {
 
 pub enum Msg {
     UrlChanged(subs::UrlChanged),
-    UserCred(component::user_cred::Msg),
     CreateGame(page::create::Msg),
     Home(page::home::Msg),
     Game(page::game::Msg),
     Login { name: String },
-}
 
-fn get_user_cred(model: &mut Model) -> &mut component::user_cred::Model {
-    match model.page {
-        Page::Login(ref mut model) => &mut model.user_cred,
-        Page::Register(ref mut model) => &mut model.user_cred,
-        _ => unreachable!(),
-    }
+    LoginPage(page::login::Msg),
+    RegisterPage(page::register::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::UrlChanged(subs::UrlChanged(url)) => model.page = Page::init(url, orders),
-        Msg::UserCred(msg) => component::user_cred::update(msg, get_user_cred(model), orders),
         Msg::CreateGame(msg) => page::create::update(
             msg,
             model.page.as_create_mut().unwrap(),
@@ -62,6 +55,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         ),
 
         Msg::Login { name } => model.user = Some(name),
+        Msg::LoginPage(msg) => page::login::update(msg, model.page.as_login_mut().unwrap(), orders),
+        Msg::RegisterPage(msg) => {
+            page::register::update(msg, model.page.as_register_mut().unwrap(), orders)
+        }
     }
 }
 
