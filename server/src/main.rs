@@ -36,7 +36,5 @@ pub async fn main() -> Result<(), Error>
 
     server.await?;
 
-
-
     Ok(())
 }

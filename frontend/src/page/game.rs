@@ -139,7 +139,7 @@ impl Iterator for HexIter {
     }
 }
 
-fn draw_circle<Ms: 'static>(n: usize, dx: f32, dy: f32, id: &mut usize) -> Vec<Node<Ms>> {
+fn draw_circle(n: usize, dx: f32, dy: f32, id: &mut usize) -> Vec<Node<crate::Msg>> {
     let (cx, cy) = (50., 50.);
     if n == 0 {
         let res = vec![hex(cy, cy, *id)];
@@ -161,7 +161,7 @@ fn draw_circle<Ms: 'static>(n: usize, dx: f32, dy: f32, id: &mut usize) -> Vec<N
     }
 }
 
-fn hex<Ms: 'static>(x: f32, y: f32, id: usize) -> Node<Ms> {
+fn hex(x: f32, y: f32, id: usize) -> Node<crate::Msg> {
     r#use![
         attrs! {
             At::Href => "#pod",
@@ -173,8 +173,6 @@ fn hex<Ms: 'static>(x: f32, y: f32, id: usize) -> Node<Ms> {
             crate::Msg::Game(Msg::ClickHex(id))
         })
     ]
-
-    // <use xlink:href="#pod" transform="translate(50, 41)"/>
 }
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
