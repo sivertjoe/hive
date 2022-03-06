@@ -129,8 +129,11 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
         }
         Msg::ClickHex(idx) => {
             let hex = &mut model.gridv2[idx];
-            if let Some((p, _idx)) = &model.selected_piece {
+            if let Some((p, _)) = &model.selected_piece {
                 hex.piece = Some(*p);
+                clear_squares(model);
+                let (piece, _) = model.selected_piece.take().unwrap();
+                move_piece(model, piece, idx);
             }
         }
         Msg::SelectPiece(idx) => {
@@ -140,11 +143,24 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     }
 }
 
+fn move_piece(model: &mut Model, p: Piece, idx: usize) {
+    let board = &mut model.game.as_mut().unwrap().board;
+    board.place_piece(p, idx);
+
+    // send the request maybe
+}
+
+fn clear_squares(model: &mut Model) {
+    for square in &mut model.gridv2 {
+        square.selected = false;
+    }
+}
+
 fn update_squares(model: &mut Model) {
     let board = &model.game.as_ref().unwrap().board;
-    let piece = &model.selected_piece.as_ref().unwrap().0;
+    let (piece, pos) = &model.selected_piece.as_ref().unwrap();
 
-    for mov in legal_moves(piece, board) {
+    for mov in legal_moves(piece, board, pos) {
         model.gridv2[mov as usize].selected = true;
     }
 }
