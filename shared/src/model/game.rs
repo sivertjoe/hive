@@ -26,8 +26,8 @@ pub struct OnGoingGame
 #[derive(Serialize, Deserialize)]
 pub struct Game
 {
-    players: [ObjectId; 2],
-    board:   Board,
+    pub players: [ObjectId; 2],
+    pub board:   Board,
 }
 
 impl Game
@@ -41,10 +41,30 @@ impl Game
     }
 }
 
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum Color
+{
+    White,
+    Black,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone)]
+pub struct Piece
+{
+    pub r#type: BoardPiece,
+    pub color:  Color,
+}
+
+pub fn legal_moves(p: &Piece, board: &Board) -> Vec<Square>
+{
+    if board.board.len() == 0 { vec![0] } else { todo!() }
+}
+
 #[derive(Serialize, Deserialize)]
 enum BoardSquare
 {
-    Occupied((BoardPiece, Box<BoardSquare>)),
+    Occupied((Piece, Box<BoardSquare>)),
     Empty,
 }
 
@@ -67,25 +87,12 @@ impl Board
 
 pub type Square = u32;
 
-#[derive(Serialize, Deserialize)]
-enum BoardPiece
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum BoardPiece
 {
     Queen,
     Ant,
     Spider,
     Beetle,
     Grasshopper,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Move
-{
-    piece: BoardPiece,
-    from:  Square,
-    to:    Square,
-}
-
-pub trait Piece: Serialize + serde::de::DeserializeOwned
-{
-    fn available_moves(&self) -> Vec<Move>;
 }
