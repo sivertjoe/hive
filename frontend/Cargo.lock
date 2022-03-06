@@ -20,18 +20,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
-name = "awsm_web"
-version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e07619f0868d3e1b8c8e3a15eb09525d8480206be51f9ff9905ed160999c11b"
-dependencies = [
- "js-sys",
- "log",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "base-x"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -160,7 +148,6 @@ dependencies = [
 name = "frontend"
 version = "0.1.0"
 dependencies = [
- "awsm_web",
  "enum-as-inner",
  "seed",
  "serde",
