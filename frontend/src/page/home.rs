@@ -106,7 +106,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let game = model.available_games.remove(idx);
                     let name = LocalStorage::get("name").unwrap();
                     model.ongoing_games.push(OnGoingGame {
-                        game_object_id: accept.object_id.to_string(),
+                        game_object_id: accept.object_id,
                         players: [game.name, name],
                     });
                 }
@@ -195,7 +195,7 @@ fn available_games<Ms: 'static>(model: &Model) -> Node<Ms> {
 }
 
 fn ongoing_game<Ms: 'static>(game: &OnGoingGame) -> Node<Ms> {
-    let id = game.game_object_id.clone();
+    let id = game.game_object_id.to_string();
     let url = Url::new().add_path_part("game").add_path_part(&id);
     tr![
         a![

@@ -19,7 +19,7 @@ const BOARD_SIZE: usize = 2 + 4 + 4 + 6 + 6;
 #[derive(Serialize, Deserialize)]
 pub struct OnGoingGame
 {
-    pub game_object_id: String,
+    pub game_object_id: ObjectId,
     pub players:        [String; 2],
 }
 

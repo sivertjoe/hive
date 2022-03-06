@@ -252,32 +252,17 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
                 },
                 doc! {
                     "$project": {
-                        "players": "$players.name"
+                        "players": "$players.name",
+                        "game_object_id": "$_id",
                     }
                 },
             ],
             None,
         )
         .await?
-        /*.flat_map(|doc| {
+        .flat_map(|doc| {
             let doc = doc.unwrap();
             stream::iter(bson::from_document::<OnGoingGame>(doc))
-        })*/
-        .map(|doc| {
-            let doc = doc.unwrap();
-
-            let mut players = doc
-                .get_array("players")
-                .unwrap()
-                .iter()
-                .map(|d| d.as_str().unwrap().to_string());
-
-            let players = [players.next().unwrap(), players.next().unwrap()];
-            let game_object_id = doc.get("_id").unwrap().as_object_id().unwrap().to_string();
-            OnGoingGame {
-                players,
-                game_object_id,
-            }
         })
         .collect()
         .await)
