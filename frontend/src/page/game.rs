@@ -9,28 +9,66 @@ pub enum Msg {
     SelectPiece(usize),
 }
 
-struct Hex {
-    x: f32,
-    y: f32,
-    piece: Option<Piece>,
+struct Orientation {
+    f0: f32,
+    f1: f32,
+    f2: f32,
+    f3: f32,
+
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    b3: f32,
+
+    start_angle: f32,
+}
+
+impl Orientation {
+    fn flat() -> Self {
+        Self {
+            f0: 3.0 / 2.0,
+            f1: 0.0,
+            f2: 3.0_f32.sqrt() / 2.0,
+            f3: 3.0_f32.sqrt(),
+
+            b0: 2.0 / 3.0,
+            b1: 0.0,
+            b2: -1.0 / 3.0,
+            b3: 3.0_f32.sqrt() / 3.0,
+
+            start_angle: 0.0,
+        }
+    }
+}
+
+struct _Hex {
+    q: isize,
+    r: isize,
+    s: isize,
+
     idx: usize,
+    piece: Option<Piece>,
     selected: bool,
 }
 
-impl Hex {
-    fn empty(x: f32, y: f32, idx: usize) -> Self {
-        Self {
-            x,
-            y,
-            idx,
-            piece: None,
-            selected: false,
-        }
+impl _Hex {
+    fn sq(&self) -> Square {
+        (self.q, self.r, self.s)
     }
 
-    fn node(&self) -> Node<crate::Msg> {
-        let x = self.x;
-        let y = self.y;
+    #[allow(non_snake_case)]
+    fn to_pixels(&self) -> (f32, f32) {
+        let M = Orientation::flat();
+        const S: f32 = 5.1;
+
+        let x: f32 = (M.f0 * self.q as f32 + M.f1 * self.r as f32) * S;
+        let y: f32 = (M.f2 * self.q as f32 + M.f3 * self.r as f32) * S;
+
+        (x + 50.0, y + 50.0)
+    }
+
+    fn _node(&self) -> Node<crate::Msg> {
+        let (x, y) = self.to_pixels();
         let idx = self.idx;
 
         let opacity = match self.selected {
@@ -60,23 +98,29 @@ impl Hex {
     }
 }
 
-struct _Hex {
-    q: isize,
-    r: isize,
-    s: isize,
-}
-
 // 4.2.3 maybe
 // https://www.redblobgames.com/grids/hexagons/implementation.html#hex-to-pixel
 fn create_gridv3(r: usize) -> Vec<_Hex> {
     use std::cmp::{max, min};
+    let r = r as isize;
 
     let mut vec = Vec::new();
+    let mut idx = 0;
     for q in -r..=r {
         let r1 = max(-r, -q - r);
-        let r2 = max(r, -q + r);
+        let r2 = min(r, -q + r);
 
-        for r in r1..=r2 {}
+        for r in r1..=r2 {
+            vec.push(_Hex {
+                q,
+                r,
+                s: -q - r,
+                selected: false,
+                piece: None,
+                idx,
+            });
+            idx += 1;
+        }
     }
     vec
 }
@@ -87,7 +131,6 @@ pub struct Model {
 
     gridv3: Vec<_Hex>,
 
-    gridv2: Vec<Hex>,
     menu: Vec<(Node<crate::Msg>, BoardPiece)>,
 
     selected_piece: Option<(Piece, Option<usize>)>,
@@ -115,8 +158,6 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                 let size = gen_size(0.5);
                 Some(Model {
                     game: None,
-                    //grid: create_grid(2),
-                    gridv2: create_gridv2(2),
                     gridv3: create_gridv3(2),
                     menu: create_menu(),
                     selected_piece: None,
@@ -152,12 +193,15 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.label = Some(format!("http error: {text:?}"));
         }
         Msg::ClickHex(idx) => {
-            let hex = &mut model.gridv2[idx];
+            let hex = &mut model.gridv3[idx];
+            let sq = hex.sq();
+
             if let Some((p, _)) = &model.selected_piece {
                 hex.piece = Some(*p);
                 clear_squares(model);
                 let (piece, _) = model.selected_piece.take().unwrap();
-                move_piece(model, piece, idx);
+
+                move_piece(model, piece, sq);
             }
         }
         Msg::SelectPiece(idx) => {
@@ -167,15 +211,15 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     }
 }
 
-fn move_piece(model: &mut Model, p: Piece, idx: usize) {
+fn move_piece(model: &mut Model, p: Piece, sq: Square) {
     let board = &mut model.game.as_mut().unwrap().board;
-    board.place_piece(p, idx);
+    board.place_piece(p, sq);
 
     // send the request maybe
 }
 
 fn clear_squares(model: &mut Model) {
-    for square in &mut model.gridv2 {
+    for square in &mut model.gridv3 {
         square.selected = false;
     }
 }
@@ -184,8 +228,10 @@ fn update_squares(model: &mut Model) {
     let board = &model.game.as_ref().unwrap().board;
     let (piece, pos) = &model.selected_piece.as_ref().unwrap();
 
+
     for mov in legal_moves(piece, board, pos) {
-        model.gridv2[mov as usize].selected = true;
+        let hex = model.gridv3.iter_mut().find(|hex| hex.sq() == mov).unwrap();
+        hex.selected = true;
     }
 }
 
@@ -227,74 +273,6 @@ async fn send_message(id: ObjectId) -> fetch::Result<String> {
         .check_status()?
         .text()
         .await
-}
-
-fn create_gridv2(n: usize) -> Vec<Hex> {
-    let deltas = |n: f32| (15. * n, 9. * n);
-
-    let (dx, dy) = deltas(0.5);
-
-    let mut id = 0;
-    (0..=n)
-        .map(|n| draw_circlev2(n, dx, dy, &mut id))
-        .flatten()
-        .collect()
-}
-
-fn draw_circlev2(n: usize, dx: f32, dy: f32, id: &mut usize) -> Vec<Hex> {
-    let (cx, cy) = (50., 50.);
-    if n == 0 {
-        let res = vec![Hex::empty(cx, cy, *id)];
-        *id += 1;
-        res
-    } else {
-        let mut sy = cy - (n as f32 * dy * 2.);
-        let mut sx = cx;
-        HexIter::new(n)
-            .into_iter()
-            .map(|(zx, zy)| {
-                let res = Hex::empty(sx, sy, *id);
-                sx += 2. * dx * zx;
-                sy += 2. * dy * zy;
-                *id += 1;
-                res
-            })
-            .collect::<Vec<_>>()
-    }
-}
-
-struct HexIter {
-    n: usize,
-    it: usize,
-}
-
-impl HexIter {
-    fn new(n: usize) -> Self {
-        HexIter { n, it: 0 }
-    }
-}
-
-impl Iterator for HexIter {
-    type Item = (f32, f32);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        const SEQ: [(f32, f32); 6] = [
-            (0.5, 0.5),
-            (0.0, 1.0),
-            (-0.5, 0.5),
-            (-0.5, -0.5),
-            (0.0, -1.0),
-            (0.5, -0.5),
-        ];
-
-        if self.it < 6 * self.n {
-            let idx = self.it / self.n;
-            self.it += 1;
-            Some(SEQ[idx])
-        } else {
-            None
-        }
-    }
 }
 
 fn piece_hex(
@@ -391,6 +369,6 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
                 At::Points => &model.size,
             },]
         ]],
-        model.gridv2.iter().map(|hex| hex.node())
+        model.gridv3.iter().map(_Hex::_node)
     ]
 }

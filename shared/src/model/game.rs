@@ -78,8 +78,10 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<usize>) -> Vec<S
 
     match board.board.len()
     {
-        0 => vec![0],
-        1 => (1..=6).collect(),
+        // These first we _know_ and can be hardcoded
+        0 => vec![(0, 0, 0)],
+        1 => vec![(1, -1, 0), (-1, 1, 0), (1, 0, -1), (-1, 0, 1), (0, 1, -1), (0, -1, 1)],
+
         _ =>
         {
             if (board.turns == 7 || board.turns == 8) && !contains_queen()
@@ -156,24 +158,24 @@ impl Board
         }
     }
 
-    pub fn place_piece(&mut self, piece: Piece, idx: usize)
+    pub fn place_piece(&mut self, piece: Piece, sq: Square)
     {
-        match self.board.remove(&idx)
+        match self.board.remove(&sq)
         {
             Some(bpiece) =>
             {
-                self.board.insert(idx, BPiece::with_bpiece(piece, bpiece));
+                self.board.insert(sq, BPiece::with_bpiece(piece, bpiece));
             },
             None =>
             {
-                self.board.insert(idx, BPiece::new(piece));
+                self.board.insert(sq, BPiece::new(piece));
             },
         }
     }
 }
 
 
-pub type Square = usize;
+pub type Square = (isize, isize, isize);
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum BoardPiece
@@ -185,54 +187,9 @@ pub enum BoardPiece
     Grasshopper,
 }
 
-fn level(sq: Square) -> usize
-{
-    if sq == 0
-    {
-        0
-    }
-    else
-    {
-        let mut l = 1;
-        let mut lower = 1;
-        let mut upper = 6;
-        loop
-        {
-            if (lower..=upper).contains(&sq)
-            {
-                break l;
-            }
-            else
-            {
-                l += 1;
-                lower = upper + 1;
-                upper *= 2;
-            }
-        }
-    }
-}
-
-// TODO!
-fn neighbors(sq: Square) -> [Square; 6]
-{
-    let mut vec = Vec::new();
-    vec.try_into().unwrap()
-}
-
 
 #[cfg(test)]
 mod test
 {
     use super::*;
-    #[test]
-    fn test_neighbors()
-    {
-        let same = |a: [Square; 6], b: [Square; 6]| {
-            a.iter().all(|aa| b.iter().position(|bb| bb == aa).is_some())
-        };
-        assert!(same(neighbors(0), [1, 2, 3, 4, 5, 6]));
-        assert!(same(neighbors(1), [0, 2, 6, 7, 8, 18]));
-        assert!(same(neighbors(7), [19, 20, 36, 18, 1, 8]));
-        assert!(same(neighbors(15), [33, 34, 35, 6, 16, 18]));
-    }
 }
