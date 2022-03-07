@@ -77,7 +77,7 @@ impl _Hex {
         };
 
         let fill = match (self.piece.as_ref(), self.selected) {
-            (Some(p), _) => piece_color(p.r#type),
+            (Some(p), _) => piece_color(p.r#type, p.color),
             (None, false) => "transparent",
             (None, true) => "grey",
         };
@@ -98,8 +98,6 @@ impl _Hex {
     }
 }
 
-// 4.2.3 maybe
-// https://www.redblobgames.com/grids/hexagons/implementation.html#hex-to-pixel
 fn create_gridv3(r: usize) -> Vec<_Hex> {
     use std::cmp::{max, min};
     let r = r as isize;
@@ -138,10 +136,6 @@ pub struct Model {
     size: String,
     label: Option<String>,
 }
-
-/* NOTE
- * we must use `gen_size` number in create_grid!!!
- */
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     let gen_size = |n: f32| {
@@ -229,6 +223,13 @@ fn update_squares(model: &mut Model) {
     let (piece, pos) = &model.selected_piece.as_ref().unwrap();
 
 
+    let moves = format!("{:?}", legal_moves(piece, board, pos));
+    log(moves);
+
+    let b = format!("{:?}", board);
+    log(b);
+
+
     for mov in legal_moves(piece, board, pos) {
         let hex = model.gridv3.iter_mut().find(|hex| hex.sq() == mov).unwrap();
         hex.selected = true;
@@ -240,10 +241,13 @@ fn update_menu(model: &mut Model, idx: usize) {
         if let Node::Element(ref mut el) = item {
             let at = &mut el.attrs.vals;
             if i == idx {
-                let p = Piece {
-                    color: Color::White,
-                    r#type: *bp,
+                // TODO: Get correct color
+                let color = if model.game.as_ref().unwrap().board.turns % 2 == 0 {
+                    Color::White
+                } else {
+                    Color::Black
                 };
+                let p = Piece { color, r#type: *bp };
                 model.selected_piece = Some((p, None));
                 at.insert(At::Class, AtValue::Some("selected-piece".into()));
             } else {
@@ -308,13 +312,23 @@ fn piece_hex(
     ]
 }
 
-fn piece_color(b: BoardPiece) -> &'static str {
-    match b {
-        BoardPiece::Queen => "gold",
-        BoardPiece::Ant => "blue",
-        BoardPiece::Spider => "brown",
-        BoardPiece::Grasshopper => "green",
-        BoardPiece::Beetle => "purple",
+fn piece_color(b: BoardPiece, color: Color) -> &'static str {
+    if color == Color::White {
+        match b {
+            BoardPiece::Queen => "gold",
+            BoardPiece::Ant => "blue",
+            BoardPiece::Spider => "peru",
+            BoardPiece::Grasshopper => "palegreen",
+            BoardPiece::Beetle => "rebeccapurple",
+        }
+    } else {
+        match b {
+            BoardPiece::Queen => "DarkGoldenRod",
+            BoardPiece::Ant => "MidnightBlue",
+            BoardPiece::Spider => "brown",
+            BoardPiece::Grasshopper => "green",
+            BoardPiece::Beetle => "indigo",
+        }
     }
 }
 
@@ -326,12 +340,24 @@ fn create_menu() -> Vec<(Node<crate::Msg>, BoardPiece)> {
     let colors = [Queen, Ant, Spider, Grasshopper, Beetle];
     let spacing = 100.0 / colors.len() as f32;
 
+
+    // Should be set to the players colors
+    let color = Color::White;
+
     colors
         .into_iter()
         .enumerate()
         .map(|(i, piece)| {
             (
-                piece_hex(dx, dy, colors.len(), i, i, piece_color(piece), spacing),
+                piece_hex(
+                    dx,
+                    dy,
+                    colors.len(),
+                    i,
+                    i,
+                    piece_color(piece, color),
+                    spacing,
+                ),
                 piece,
             )
         })

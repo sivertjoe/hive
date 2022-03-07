@@ -3,18 +3,6 @@ use std::collections::HashMap;
 use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
-/*
- * According to the rules: https://www.ultraboardgames.com/hive/game-rules.php
- * there are:
- * 2 Queen bees
- * 4 Spiders
- * 4 Beetles
- * 6 Grasshoppers
- * 6 Ants
-
-    Thus, the maximum board length in any direction is:
-*/
-const BOARD_SIZE: usize = 2 + 4 + 4 + 6 + 6;
 
 #[derive(Serialize, Deserialize)]
 pub struct OnGoingGame
@@ -42,14 +30,14 @@ impl Game
 }
 
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Color
 {
     White,
     Black,
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub struct Piece
 {
     pub r#type: BoardPiece,
@@ -91,32 +79,47 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<usize>) -> Vec<S
 
             match board_pos
             {
-                Some(pos) => todo!(), // Moving piece on the board,
+                Some(_pos) => todo!(), // Moving piece on the board,
                 None => legal_new_piece_moves(p, board),
             }
         },
     }
 }
 
+// Hmm, t-this can be simplified r-right?
 fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
 {
+    // Good neighbors have only same color neighbors or none
+    let good_neighbors = |sq: &Square| {
+        neighbors(&sq).into_iter().all(|sq| match board.board.get(&sq)
+        {
+            None => true,
+            Some(s) => s.piece.color == piece.color,
+        })
+    };
+
+    let not_touching_other_color =
+        //|sq: Square| board.board.get(&sq).map_or(true, |s| s.piece.color == piece.color);
+        |sq: Square| board.board.get(&sq).is_none() && good_neighbors(&sq);
+
     board
         .board
         .iter()
-        .filter(|(_, bp)| bp.piece.color != piece.color)
-        .filter(|(sq, _)| {
-            // Filter piece without an untouched neighbour
-            true
-        });
-
-
-    Vec::new()
+        .filter_map(|(sq, bp)| {
+            (bp.piece.color == piece.color).then(|| {
+                neighbors(sq)
+                    .into_iter()
+                    .filter_map(|sq| not_touching_other_color(sq).then(|| sq))
+            })
+        })
+        .flatten()
+        .collect()
 }
 
 
 type Stack = Option<Box<BPiece>>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct BPiece
 {
     piece: Piece,
@@ -142,7 +145,7 @@ impl BPiece
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Board
 {
     board:     HashMap<Square, BPiece>,
@@ -171,13 +174,15 @@ impl Board
                 self.board.insert(sq, BPiece::new(piece));
             },
         }
+
+        self.turns += 1;
     }
 }
 
 
 pub type Square = (isize, isize, isize);
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum BoardPiece
 {
     Queen,
@@ -188,8 +193,51 @@ pub enum BoardPiece
 }
 
 
+fn neighbors(sq: &Square) -> [Square; 6]
+{
+    const CUBE_DIR_VEC: [(isize, isize, isize); 6] =
+        [(1, 0, -1), (1, -1, 0), (0, -1, 1), (-1, 0, 1), (-1, 1, 0), (0, 1, -1)];
+
+    let mut iter = CUBE_DIR_VEC.into_iter().map(|d| (sq.0 + d.0, sq.1 + d.1, sq.2 + d.2));
+
+    [
+        iter.next().unwrap(),
+        iter.next().unwrap(),
+        iter.next().unwrap(),
+        iter.next().unwrap(),
+        iter.next().unwrap(),
+        iter.next().unwrap(),
+    ]
+}
+
 #[cfg(test)]
 mod test
 {
     use super::*;
+
+    #[test]
+    fn test_get_correct_neighbors()
+    {
+        let same = |a: [Square; 6], b: [Square; 6]| {
+            a.iter().all(|aa| b.iter().position(|bb| aa == bb).is_some())
+        };
+
+        assert!(same(neighbors(&(0, 0, 0)), [
+            (0, -1, 1),
+            (0, 1, -1),
+            (1, 0, -1),
+            (-1, 0, 1),
+            (1, -1, 0),
+            (-1, 1, 0)
+        ]));
+
+        assert!(same(neighbors(&(0, -2, 2)), [
+            (0, -3, 3),
+            (1, -3, 2),
+            (1, -2, 1),
+            (0, -1, 1),
+            (-1, -1, 2),
+            (-1, -2, 3)
+        ]));
+    }
 }
