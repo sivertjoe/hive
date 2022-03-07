@@ -60,9 +60,32 @@ impl Hex {
     }
 }
 
+struct _Hex {
+    q: isize,
+    r: isize,
+    s: isize,
+}
+
+// 4.2.3 maybe
+// https://www.redblobgames.com/grids/hexagons/implementation.html#hex-to-pixel
+fn create_gridv3(r: usize) -> Vec<_Hex> {
+    use std::cmp::{max, min};
+
+    let mut vec = Vec::new();
+    for q in -r..=r {
+        let r1 = max(-r, -q - r);
+        let r2 = max(r, -q + r);
+
+        for r in r1..=r2 {}
+    }
+    vec
+}
+
 #[derive(Default)]
 pub struct Model {
     game: Option<Game>,
+
+    gridv3: Vec<_Hex>,
 
     gridv2: Vec<Hex>,
     menu: Vec<(Node<crate::Msg>, BoardPiece)>,
@@ -94,6 +117,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     game: None,
                     //grid: create_grid(2),
                     gridv2: create_gridv2(2),
+                    gridv3: create_gridv3(2),
                     menu: create_menu(),
                     selected_piece: None,
                     size,
