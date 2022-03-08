@@ -218,9 +218,7 @@ mod test
     #[test]
     fn test_get_correct_neighbors()
     {
-        let same = |a: [Square; 6], b: [Square; 6]| {
-            a.iter().all(|aa| b.iter().position(|bb| aa == bb).is_some())
-        };
+        let same = |a: [Square; 6], b: [Square; 6]| a.iter().all(|a| b.contains(a));
 
         assert!(same(neighbors(&(0, 0, 0)), [
             (0, -1, 1),
