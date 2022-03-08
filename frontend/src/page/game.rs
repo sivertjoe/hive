@@ -2,127 +2,6 @@ use seed::{self, prelude::*, *};
 use shared::model::{Game, ResponseBody};
 use shared::{model::game::*, ObjectId};
 
-pub enum Msg {
-    FetchGame(fetch::Result<String>),
-    ClickHex(usize),
-
-    SelectPiece(usize),
-}
-
-struct Orientation {
-    f0: f32,
-    f1: f32,
-    f2: f32,
-    f3: f32,
-
-    b0: f32,
-    b1: f32,
-    b2: f32,
-    b3: f32,
-
-    start_angle: f32,
-}
-
-impl Orientation {
-    fn flat() -> Self {
-        Self {
-            f0: 3.0 / 2.0,
-            f1: 0.0,
-            f2: 3.0_f32.sqrt() / 2.0,
-            f3: 3.0_f32.sqrt(),
-
-            b0: 2.0 / 3.0,
-            b1: 0.0,
-            b2: -1.0 / 3.0,
-            b3: 3.0_f32.sqrt() / 3.0,
-
-            start_angle: 0.0,
-        }
-    }
-}
-
-struct _Hex {
-    q: isize,
-    r: isize,
-    s: isize,
-
-    idx: usize,
-    piece: Option<Piece>,
-    selected: bool,
-}
-
-impl _Hex {
-    fn sq(&self) -> Square {
-        (self.q, self.r, self.s)
-    }
-
-    #[allow(non_snake_case)]
-    fn to_pixels(&self) -> (f32, f32) {
-        let M = Orientation::flat();
-        const S: f32 = 5.1;
-
-        let x: f32 = (M.f0 * self.q as f32 + M.f1 * self.r as f32) * S;
-        let y: f32 = (M.f2 * self.q as f32 + M.f3 * self.r as f32) * S;
-
-        (x + 50.0, y + 50.0)
-    }
-
-    fn _node(&self) -> Node<crate::Msg> {
-        let (x, y) = self.to_pixels();
-        let idx = self.idx;
-
-        let opacity = match self.selected {
-            true => "0.5",
-            false => "1.0",
-        };
-
-        let fill = match (self.piece.as_ref(), self.selected) {
-            (Some(p), _) => piece_color(p.r#type, p.color),
-            (None, false) => "transparent",
-            (None, true) => "grey",
-        };
-
-        r#use![
-            attrs! {
-                At::Href => "#pod",
-                At::Transform => format!("translate({x}, {y})"),
-                At::Fill => fill,
-                At::Stroke => "gold",
-                At::Opacity => opacity,
-            },
-            ev(Ev::Click, move |event| {
-                event.prevent_default();
-                crate::Msg::Game(Msg::ClickHex(idx))
-            })
-        ]
-    }
-}
-
-fn create_gridv3(r: usize) -> Vec<_Hex> {
-    use std::cmp::{max, min};
-    let r = r as isize;
-
-    let mut vec = Vec::new();
-    let mut idx = 0;
-    for q in -r..=r {
-        let r1 = max(-r, -q - r);
-        let r2 = min(r, -q + r);
-
-        for r in r1..=r2 {
-            vec.push(_Hex {
-                q,
-                r,
-                s: -q - r,
-                selected: false,
-                piece: None,
-                idx,
-            });
-            idx += 1;
-        }
-    }
-    vec
-}
-
 #[derive(Default)]
 pub struct Model {
     game: Option<Game>,
@@ -152,7 +31,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                 let size = gen_size(0.5);
                 Some(Model {
                     game: None,
-                    gridv3: create_gridv3(2),
+                    gridv3: create_gridv3(5),
                     menu: create_menu(),
                     selected_piece: None,
                     size,
@@ -163,6 +42,12 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
         },
         _ => None,
     }
+}
+
+pub enum Msg {
+    FetchGame(fetch::Result<String>),
+    ClickHex(usize),
+    Click { id: usize, button: i16 },
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -196,11 +81,74 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 let (piece, _) = model.selected_piece.take().unwrap();
 
                 move_piece(model, piece, sq);
+                clear_menu(model);
+            }
+            // Maybe this meant we are trying to select a board piece
+            else {
+                if let Some(piece) = &model.gridv3[idx].piece {
+                    let color = if model.game.as_ref().unwrap().board.turns % 2 == 0 {
+                        Color::White
+                    } else {
+                        Color::Black
+                    };
+
+                    if piece.color == color {
+                        _select_piece(model, idx, SelectPiece::Board);
+                    }
+                }
             }
         }
-        Msg::SelectPiece(idx) => {
-            update_menu(model, idx);
-            update_squares(model);
+
+        Msg::Click { id, button } => {
+            if button == 0 {
+                select_piece(model, id);
+                update_squares(model);
+            } else if button == 2 {
+                model.selected_piece = None;
+                clear_squares(model);
+            }
+        }
+    }
+}
+
+enum SelectPiece {
+    Menu,
+    Board,
+}
+
+fn _select_piece(model: &mut Model, idx: usize, sp: SelectPiece) {
+    //let select = |item: &mut Node<crate::Msg>, i: usize, bp: &BoardPiece| {
+    let select = |(i, (item, bp)): (usize, &mut (Node<crate::Msg>, BoardPiece))| {
+        if let Node::Element(ref mut el) = item {
+            let at = &mut el.attrs.vals;
+            if i == idx {
+                // TODO: Get correct color
+                let color = if model.game.as_ref().unwrap().board.turns % 2 == 0 {
+                    Color::White
+                } else {
+                    Color::Black
+                };
+                let p = Piece { color, r#type: *bp };
+                model.selected_piece = Some((p, None));
+                at.insert(At::Class, AtValue::Some("selected-piece".into()));
+            } else {
+                at.remove(&At::Class);
+            }
+        }
+    };
+    use SelectPiece::*;
+    match sp {
+        Menu => model.menu.iter_mut().enumerate().for_each(select),
+        Board => {
+            for node in &mut model.gridv3 {
+                if node.idx == idx {
+                    node.highlight = true;
+
+                    model.selected_piece = Some((node.piece.unwrap(), Some(node.sq())));
+                } else {
+                    node.highlight = false;
+                }
+            }
         }
     }
 }
@@ -222,12 +170,13 @@ fn update_squares(model: &mut Model) {
     let board = &model.game.as_ref().unwrap().board;
     let (piece, pos) = &model.selected_piece.as_ref().unwrap();
 
+    /*
+        let moves = format!("{:?}", legal_moves(piece, board, pos));
+        log(moves);
 
-    let moves = format!("{:?}", legal_moves(piece, board, pos));
-    log(moves);
-
-    let b = format!("{:?}", board);
-    log(b);
+        let b = format!("{:?}", board);
+        log(b);
+    */
 
 
     for mov in legal_moves(piece, board, pos) {
@@ -236,7 +185,16 @@ fn update_squares(model: &mut Model) {
     }
 }
 
-fn update_menu(model: &mut Model, idx: usize) {
+fn clear_menu(model: &mut Model) {
+    for (node, _) in model.menu.iter_mut() {
+        if let Node::Element(ref mut el) = node {
+            let at = &mut el.attrs.vals;
+            at.remove(&At::Class);
+        }
+    }
+}
+
+fn select_piece(model: &mut Model, idx: usize) {
     for (i, (item, bp)) in model.menu.iter_mut().enumerate() {
         if let Node::Element(ref mut el) = item {
             let at = &mut el.attrs.vals;
@@ -307,8 +265,12 @@ fn piece_hex(
         },
         ev(Ev::Click, move |event| {
             event.prevent_default();
-            crate::Msg::Game(Msg::SelectPiece(id))
-        })
+            let ev = to_mouse_event(&event);
+            crate::Msg::Game(Msg::Click {
+                id,
+                button: ev.button(),
+            })
+        }),
     ]
 }
 
@@ -397,4 +359,126 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
         ]],
         model.gridv3.iter().map(_Hex::_node)
     ]
+}
+
+/// HEX STUFF
+struct Orientation {
+    f0: f32,
+    f1: f32,
+    f2: f32,
+    f3: f32,
+
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    b3: f32,
+
+    start_angle: f32,
+}
+
+impl Orientation {
+    fn flat() -> Self {
+        Self {
+            f0: 3.0 / 2.0,
+            f1: 0.0,
+            f2: 3.0_f32.sqrt() / 2.0,
+            f3: 3.0_f32.sqrt(),
+
+            b0: 2.0 / 3.0,
+            b1: 0.0,
+            b2: -1.0 / 3.0,
+            b3: 3.0_f32.sqrt() / 3.0,
+
+            start_angle: 0.0,
+        }
+    }
+}
+
+struct _Hex {
+    q: isize,
+    r: isize,
+    s: isize,
+
+    idx: usize,
+    piece: Option<Piece>,
+    selected: bool,
+
+    highlight: bool,
+}
+
+impl _Hex {
+    fn sq(&self) -> Square {
+        (self.q, self.r, self.s)
+    }
+
+    #[allow(non_snake_case)]
+    fn to_pixels(&self) -> (f32, f32) {
+        let M = Orientation::flat();
+        const S: f32 = 5.1;
+
+        let x: f32 = (M.f0 * self.q as f32 + M.f1 * self.r as f32) * S;
+        let y: f32 = (M.f2 * self.q as f32 + M.f3 * self.r as f32) * S;
+
+        (x + 50.0, y + 50.0)
+    }
+
+    fn _node(&self) -> Node<crate::Msg> {
+        let (x, y) = self.to_pixels();
+        let idx = self.idx;
+
+        let opacity = match self.selected {
+            true => "0.5",
+            false => "1.0",
+        };
+
+        let fill = match (self.piece.as_ref(), self.selected) {
+            (Some(p), _) => piece_color(p.r#type, p.color),
+            (None, false) => "transparent",
+            (None, true) => "grey",
+        };
+
+        let c = if self.highlight { "selected-piece" } else { "" };
+
+        r#use![
+            attrs! {
+                At::Href => "#pod",
+                At::Transform => format!("translate({x}, {y})"),
+                At::Fill => fill,
+                At::Stroke => "gold",
+                At::Opacity => opacity,
+                At::Class => c,
+
+            },
+            ev(Ev::Click, move |event| {
+                event.prevent_default();
+                crate::Msg::Game(Msg::ClickHex(idx))
+            })
+        ]
+    }
+}
+
+fn create_gridv3(r: usize) -> Vec<_Hex> {
+    use std::cmp::{max, min};
+    let r = r as isize;
+
+    let mut vec = Vec::new();
+    let mut idx = 0;
+    for q in -r..=r {
+        let r1 = max(-r, -q - r);
+        let r2 = min(r, -q + r);
+
+        for r in r1..=r2 {
+            vec.push(_Hex {
+                q,
+                r,
+                s: -q - r,
+                selected: false,
+                piece: None,
+                idx,
+                highlight: false,
+            });
+            idx += 1;
+        }
+    }
+    vec
 }

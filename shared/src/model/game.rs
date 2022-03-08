@@ -44,7 +44,7 @@ pub struct Piece
     pub color:  Color,
 }
 
-pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<usize>) -> Vec<Square>
+pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<Square>) -> Vec<Square>
 {
     let search_stack = |next: &Stack| match next
     {
@@ -64,7 +64,7 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<usize>) -> Vec<S
     };
 
 
-    match board.board.len()
+    match board.turns
     {
         // These first we _know_ and can be hardcoded
         0 => vec![(0, 0, 0)],
@@ -72,10 +72,10 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<usize>) -> Vec<S
 
         _ =>
         {
-            if (board.turns == 7 || board.turns == 8) && !contains_queen()
+            /*if (board.turns == 7 || board.turns == 8) && !contains_queen()
             {
                 todo!()
-            }
+            }*/
 
             match board_pos
             {
