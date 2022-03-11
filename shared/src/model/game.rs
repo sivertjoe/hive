@@ -79,12 +79,29 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<Square>) -> Vec<
 
             match board_pos
             {
-                Some(_pos) => todo!(), // Moving piece on the board,
+                Some(_pos) => vec![(2, -2, 0)],
                 None => legal_new_piece_moves(p, board),
             }
         },
     }
 }
+
+// Actually, just use the _Hex::to_pixel method in reverse??
+pub fn pixel_to_hex(x: isize, y: isize) -> Square
+{
+    let (x, y) = (x as f32, y as f32);
+    const S: f32 = 5.1;
+
+    let (q, r) = ((2.0 / 3.0 * x) / S, (-1.0 / 3.0 * x + 3.0_f32.sqrt() / 3.0 * y) / S);
+
+
+    let q = q.round() as isize;
+    let r = r.round() as isize;
+    let s = -q - r;
+
+    (q, r, s)
+}
+
 
 // Hmm, t-this can be simplified r-right?
 fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>

@@ -10,7 +10,7 @@ pub struct Model {
 
     menu: Vec<(Node<crate::Msg>, BoardPiece)>,
 
-    selected_piece: Option<(Piece, Option<usize>)>,
+    selected_piece: Option<(Piece, Option<Square>)>,
 
     size: String,
     label: Option<String>,
@@ -27,11 +27,29 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
             Ok(id) => {
-                orders.perform_cmd(async move { Msg::FetchGame(send_message(id).await) });
+                //orders.perform_cmd(async move { Msg::FetchGame(send_message(id).await) });
                 let size = gen_size(0.5);
+
+
+                let arr = [
+                    ObjectId::parse_str("507f1f77bcf86cd799439011").unwrap(),
+                    ObjectId::parse_str("507f1f77bcf86cd799439011").unwrap(),
+                ];
+
+                let mut gridv3 = create_gridv3(4);
+                gridv3
+                    .iter_mut()
+                    .find(|h| h.sq() == (0, 0, 0))
+                    .unwrap()
+                    .piece = Some(Piece {
+                    r#type: BoardPiece::Ant,
+                    color: Color::White,
+                });
+
                 Some(Model {
-                    game: None,
-                    gridv3: create_gridv3(5),
+                    game: Some(Game::new(arr)),
+                    //gridv3: create_gridv3(5),
+                    gridv3,
                     menu: create_menu(),
                     selected_piece: None,
                     size,
@@ -44,14 +62,27 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     }
 }
 
+#[derive(Debug)]
+pub struct Pos {
+    x: isize,
+    y: isize,
+}
+
 pub enum Msg {
     FetchGame(fetch::Result<String>),
     ClickHex(usize),
     Click { id: usize, button: i16 },
+
+    StartDrag { pos: Pos, button: i16 },
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     match msg {
+        Msg::StartDrag { pos, button } => {
+            let s = format!("{:?}", pixel_to_hex(pos.x, pos.y));
+            log(s);
+        }
+
         Msg::FetchGame(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text) {
             Ok(resp) => match resp.status {
                 200 => {
@@ -72,6 +103,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.label = Some(format!("http error: {text:?}"));
         }
         Msg::ClickHex(idx) => {
+            /*
             let hex = &mut model.gridv3[idx];
             let sq = hex.sq();
 
@@ -82,6 +114,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 
                 move_piece(model, piece, sq);
                 clear_menu(model);
+                clear_squares(model);
             }
             // Maybe this meant we are trying to select a board piece
             else {
@@ -94,12 +127,15 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 
                     if piece.color == color {
                         _select_piece(model, idx, SelectPiece::Board);
+                        update_squares(model);
                     }
                 }
             }
+            */
         }
 
         Msg::Click { id, button } => {
+            /*
             if button == 0 {
                 select_piece(model, id);
                 update_squares(model);
@@ -107,6 +143,7 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
                 model.selected_piece = None;
                 clear_squares(model);
             }
+            */
         }
     }
 }
@@ -143,7 +180,6 @@ fn _select_piece(model: &mut Model, idx: usize, sp: SelectPiece) {
             for node in &mut model.gridv3 {
                 if node.idx == idx {
                     node.highlight = true;
-
                     model.selected_piece = Some((node.piece.unwrap(), Some(node.sq())));
                 } else {
                     node.highlight = false;
@@ -179,6 +215,7 @@ fn update_squares(model: &mut Model) {
     */
 
 
+    log(&format!("{:?}", pos));
     for mov in legal_moves(piece, board, pos) {
         let hex = model.gridv3.iter_mut().find(|hex| hex.sq() == mov).unwrap();
         hex.selected = true;
@@ -346,6 +383,20 @@ fn piece_menu(model: &Model) -> Node<crate::Msg> {
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
     svg![
+        ev(Ev::MouseDown, |event| {
+            event.prevent_default();
+            let ev = to_mouse_event(&event);
+
+            let pos = Pos {
+                x: ev.client_x() as isize,
+                y: ev.client_y() as isize,
+            };
+
+            crate::Msg::Game(Msg::StartDrag {
+                pos,
+                button: ev.button(),
+            })
+        }),
         attrs! {
             At::ViewBox => "0 0 100 100"
         },
