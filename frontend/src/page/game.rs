@@ -8,11 +8,10 @@ use web_sys::{Event, MouseEvent};
 pub struct Model {
     game: Option<Game>,
 
-    gridv3: Vec<_Hex>,
+    gridv3: Vec<Hex>,
 
-    menu: Vec<(Node<crate::Msg>, BoardPiece)>,
-
-    piece: Option<_Hex>,
+    piece: Option<Hex>,
+    menu: Vec<MenuItem>,
 
     svg: ElRef<SvgGraphicsElement>,
 
@@ -40,24 +39,27 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     ObjectId::parse_str("507f1f77bcf86cd799439011").unwrap(),
                 ];
 
-                let mut gridv3 = create_gridv3(1);
+                /*let mut gridv3 = create_gridv3(3);
                 gridv3
                     .iter_mut()
                     .find(|h| h.sq() == (0, 0, 0))
                     .unwrap()
-                    .piece = Some(Piece {
-                    r#type: BoardPiece::Ant,
-                    color: Color::White,
-                });
+                    .pieces = vec![
+                    Piece {
+                        r#type: BoardPiece::Ant,
+                        color: Color::White,
+                    },
+                    Piece {
+                        r#type: BoardPiece::Beetle,
+                        color: Color::Black,
+                    },
+                ];*/
 
                 Some(Model {
                     game: Some(Game::new(arr)),
-                    //gridv3: create_gridv3(5),
-                    gridv3,
-
-                    svg: ElRef::default(),
-
+                    gridv3: create_gridv3(3),
                     menu: create_menu(),
+                    svg: ElRef::default(),
                     piece: None,
                     size,
                     label: None,
@@ -104,11 +106,10 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let (x, y) = get_mouse_pos(model, mm);
             let sq = pixel_to_hex(x as isize, y as isize);
 
-
             model.piece = model
                 .gridv3
                 .iter()
-                .find(|hex| hex.sq() == sq && hex.piece.is_some())
+                .find(|hex| hex.sq() == sq && hex.top().is_some())
                 .map(|hex| {
                     let mut hex = hex.clone();
                     hex._x = x;
@@ -122,14 +123,17 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let (x, y) = get_mouse_pos(model, mm);
             let sq = pixel_to_hex(x as isize, y as isize);
 
-            if let Some(sel_hex) = model.piece.take() {
+            if let Some(mut sel_hex) = model.piece.take() {
                 if let Some(hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sq) {
-                    hex.piece = sel_hex.piece;
+                    let top = sel_hex.remove_top().unwrap();
+                    hex.place_piece(top);
                 }
 
+
+                // remove previous square top piece
                 if let Some(old_hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sel_hex.sq())
                 {
-                    old_hex.piece = None;
+                    old_hex.remove_top();
                 }
             } else {
                 // place back or something
@@ -168,6 +172,74 @@ pub fn view(model: &Model) -> Node<crate::Msg> {
     ]]
 }
 
+pub struct MenuItem {
+    x: f32,
+    y: f32,
+    piece: Piece,
+    //spacing: f32,
+}
+
+impl MenuItem {
+    fn to_menu_node(&self) -> Node<crate::Msg> {
+        let (x, y) = (self.x, self.y);
+
+        let stroke = piece_color(self.piece.r#type, self.piece.color);
+
+
+        div![
+            id!("test"),
+            style! {
+                    St::Width => "90px",//self.spacing,
+                    St::Height => "90px", // ??
+                    St::Background => stroke,
+            },
+            attrs! {
+                    At::X => x,
+                    At::Y => y,
+                    At::Draggable => "true",
+            }
+        ]
+    }
+}
+
+fn create_menu() -> Vec<MenuItem> {
+    let deltas = |n: f32| (15. * n, 9. * n);
+    let (_, dy) = deltas(0.5);
+
+    use BoardPiece::*;
+    let colors = [Queen, Ant, Spider, Grasshopper, Beetle];
+    let _spacing = 100.0 / colors.len() as f32;
+
+
+    // Should be set to the players colors
+    let color = Color::White;
+    let len = colors.len();
+
+    colors
+        .into_iter()
+        .enumerate()
+        .map(|(i, bp)| {
+            let piece = Piece { r#type: bp, color };
+            let size = 100.0 / len as f32;
+            let per = size / 2.0; // center
+            let x = ((i + 1) as f32 * size) - per;
+
+            let y = 1.65 * dy; // ???
+
+            MenuItem { x, y, piece }
+        })
+        .collect()
+}
+
+fn piece_menu(model: &Model) -> Node<crate::Msg> {
+    div![
+        style! {
+            St::Display => "flex",
+        },
+        model.menu.iter().map(MenuItem::to_menu_node)
+    ]
+}
+
 async fn send_message(id: ObjectId) -> fetch::Result<String> {
     Request::new(format!("http://0.0.0.0:5000/game?q={id}"))
         .method(Method::Get)
@@ -176,33 +248,6 @@ async fn send_message(id: ObjectId) -> fetch::Result<String> {
         .check_status()?
         .text()
         .await
-}
-
-fn piece_hex(
-    _dx: f32,
-    dy: f32,
-    len: usize,
-    i: usize,
-    id: usize,
-    stroke: &str,
-    spacing: f32,
-) -> Node<crate::Msg> {
-    let size = 100.0 / len as f32;
-    let per = size / 2.0; // center
-
-    let x = ((i + 1) as f32 * size) - per;
-
-
-    let y = 1.65 * dy; // ???
-    r#use![attrs! {
-        At::Href => "#pod",
-        At::Transform => format!("translate({x}, {y})"),
-        At::Display => "flex",
-        At::Fill => stroke,
-        //At::Stroke => stroke,
-        At::Width => spacing,
-        //At::Class => "selected-piece",
-    },]
 }
 
 fn piece_color(b: BoardPiece, color: Color) -> &'static str {
@@ -225,86 +270,62 @@ fn piece_color(b: BoardPiece, color: Color) -> &'static str {
     }
 }
 
-fn create_menu() -> Vec<(Node<crate::Msg>, BoardPiece)> {
-    let deltas = |n: f32| (15. * n, 9. * n);
-    let (dx, dy) = deltas(0.5);
-
-    use BoardPiece::*;
-    let colors = [Queen, Ant, Spider, Grasshopper, Beetle];
-    let spacing = 100.0 / colors.len() as f32;
-
-
-    // Should be set to the players colors
-    let color = Color::White;
-
-    colors
-        .into_iter()
-        .enumerate()
-        .map(|(i, piece)| {
-            (
-                piece_hex(
-                    dx,
-                    dy,
-                    colors.len(),
-                    i,
-                    i,
-                    piece_color(piece, color),
-                    spacing,
-                ),
-                piece,
-            )
-        })
-        .collect()
-}
-
-fn piece_menu(model: &Model) -> Node<crate::Msg> {
-    svg![
-        attrs! {
-            At::ViewBox => "0 0 100 15",
-
-        },
-        defs![g![
-            attrs! { At::Id => "pod" },
-            polygon![attrs! {
-                At::Stroke => "red",
-                At::StrokeWidth => ".5",
-                At::Points => &model.size,
-            },]
-        ]],
-        model.menu.iter().map(|p| &p.0)
-    ]
-}
-
 pub fn grid(model: &Model) -> Node<crate::Msg> {
-    svg![
-        el_ref(&model.svg),
-        ev(Ev::MouseMove, |event| {
-            crate::Msg::Game(Msg::Move(event))
+    div![
+        ev(Ev::DragEnter, |event| {
+            let ev = to_drag_event(&event);
+            ev.current_target();
         }),
-        ev(Ev::MouseUp, |event| {
-            log("test??");
-            crate::Msg::Game(Msg::Release(event))
+        ev(Ev::Drop, |event| {
+            event.prevent_default();
+            //to_mouse_event(&event);
+
+            use web_sys::HtmlDivElement;
+
+            let idv = event
+                .current_target()
+                .unwrap()
+                .dyn_ref::<HtmlDivElement>()
+                .unwrap()
+                .clone();
+
+            let al = idv.align();
+            log(format!("{:?}", idv));
+
+            // crate::Msg::Game(Msg::Place(event, ))
         }),
-        ev(Ev::MouseDown, |event| {
-            crate::Msg::Game(Msg::Click(event))
+        ev(Ev::DragOver, |event| {
+            event.prevent_default();
         }),
-        attrs! {
-            At::ViewBox => "0 0 100 100",
-            At::Draggable => "true",
-        },
-        defs![g![
-            attrs! { At::Id => "pod" },
-            polygon![attrs! {
-                //At::Stroke => "gold",
-                At::StrokeWidth => ".5",
-                At::Points => &model.size,
-            },]
-        ]],
-        model.gridv3.iter().map(_Hex::_node),
-        IF!(model.piece.is_some() => {
-            let p = model.piece.as_ref().unwrap();
-            p._node_xy()
-        })
+        svg![
+            el_ref(&model.svg),
+            ev(Ev::MouseMove, |event| {
+                crate::Msg::Game(Msg::Move(event))
+            }),
+            ev(Ev::MouseUp, |event| {
+                crate::Msg::Game(Msg::Release(event))
+            }),
+            ev(Ev::MouseDown, |event| {
+                crate::Msg::Game(Msg::Click(event))
+            }),
+            attrs! {
+                At::ViewBox => "0 0 100 100",
+                At::Draggable => "true",
+            },
+            defs![g![
+                attrs! { At::Id => "pod" },
+                polygon![attrs! {
+                    //At::Stroke => "gold",
+                    At::StrokeWidth => ".5",
+                    At::Points => &model.size,
+                },]
+            ]],
+            model.gridv3.iter().map(Hex::node),
+            IF!(model.piece.is_some() => {
+                let p = model.piece.as_ref().unwrap();
+                p.node_xy()
+            })
+        ]
     ]
 }
 
@@ -315,12 +336,12 @@ struct Orientation {
     f2: f32,
     f3: f32,
 
-    b0: f32,
-    b1: f32,
-    b2: f32,
-    b3: f32,
+    _b0: f32,
+    _b1: f32,
+    _b2: f32,
+    _b3: f32,
 
-    start_angle: f32,
+    _start_angle: f32,
 }
 
 impl Orientation {
@@ -331,12 +352,11 @@ impl Orientation {
             f2: 3.0_f32.sqrt() / 2.0,
             f3: 3.0_f32.sqrt(),
 
-            b0: 2.0 / 3.0,
-            b1: 0.0,
-            b2: -1.0 / 3.0,
-            b3: 3.0_f32.sqrt() / 3.0,
-
-            start_angle: 0.0,
+            _b0: 2.0 / 3.0,
+            _b1: 0.0,
+            _b2: -1.0 / 3.0,
+            _b3: 3.0_f32.sqrt() / 3.0,
+            _start_angle: 0.0,
         }
     }
 }
@@ -380,7 +400,7 @@ pub fn pixel_to_hex(x: isize, y: isize) -> Square {
 }
 
 #[derive(Clone)]
-pub struct _Hex {
+pub struct Hex {
     q: isize,
     r: isize,
     s: isize,
@@ -388,14 +408,26 @@ pub struct _Hex {
     _x: f32,
     _y: f32,
 
-    idx: usize,
-    piece: Option<Piece>,
+    pieces: Vec<Piece>,
     selected: bool,
 
     highlight: bool,
 }
 
-impl _Hex {
+impl Hex {
+    fn top(&self) -> Option<&Piece> {
+        self.pieces.last()
+    }
+
+    fn place_piece(&mut self, piece: Piece) {
+        self.pieces.push(piece);
+    }
+
+    fn remove_top(&mut self) -> Option<Piece> {
+        self.pieces.pop()
+    }
+
+
     #[allow(non_snake_case)]
     fn to_pixels(&self) -> (f32, f32) {
         let M = Orientation::flat();
@@ -411,14 +443,14 @@ impl _Hex {
         (self.q, self.r, self.s)
     }
 
-    fn _node_xy(&self) -> Node<crate::Msg> {
+    fn node_xy(&self) -> Node<crate::Msg> {
         let (x, y) = (self._x, self._y);
         let opacity = match self.selected {
             true => "0.5",
             false => "1.0",
         };
 
-        let fill = match self.piece.as_ref() {
+        let fill = match self.top() {
             Some(p) => piece_color(p.r#type, p.color),
             None => "transparent",
         };
@@ -432,7 +464,7 @@ impl _Hex {
         },]
     }
 
-    fn _node(&self) -> Node<crate::Msg> {
+    fn node(&self) -> Node<crate::Msg> {
         let (x, y) = self.to_pixels();
 
         let opacity = match self.selected {
@@ -440,7 +472,7 @@ impl _Hex {
             false => "1.0",
         };
 
-        let fill = match (self.piece.as_ref(), self.selected) {
+        let fill = match (self.top(), self.selected) {
             (Some(p), _) => piece_color(p.r#type, p.color),
             (None, false) => "transparent",
             (None, true) => "grey",
@@ -460,29 +492,26 @@ impl _Hex {
     }
 }
 
-fn create_gridv3(r: usize) -> Vec<_Hex> {
+fn create_gridv3(r: usize) -> Vec<Hex> {
     use std::cmp::{max, min};
     let r = r as isize;
 
     let mut vec = Vec::new();
-    let mut idx = 0;
     for q in -r..=r {
         let r1 = max(-r, -q - r);
         let r2 = min(r, -q + r);
 
         for r in r1..=r2 {
-            vec.push(_Hex {
+            vec.push(Hex {
                 q,
                 r,
                 s: -q - r,
                 selected: false,
-                piece: None,
-                idx,
+                pieces: Vec::new(),
                 highlight: false,
                 _x: 0.0,
                 _y: 0.0,
             });
-            idx += 1;
         }
     }
     vec

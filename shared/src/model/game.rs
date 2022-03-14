@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
+pub type Square = (isize, isize, isize);
 
 #[derive(Serialize, Deserialize)]
 pub struct OnGoingGame
@@ -46,7 +47,7 @@ pub struct Piece
 
 pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<Square>) -> Vec<Square>
 {
-    let search_stack = |next: &Stack| match next
+    /*let search_stack = |next: &Stack| match next
     {
         Some(bp) => bp.piece.r#type == BoardPiece::Queen && bp.piece.color == p.color,
         None => false,
@@ -61,7 +62,7 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<Square>) -> Vec<
                     || search_stack(&bp.next)
             })
             .is_some()
-    };
+    };*/
 
 
     match board.turns
@@ -111,7 +112,7 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
         neighbors(&sq).into_iter().all(|sq| match board.board.get(&sq)
         {
             None => true,
-            Some(s) => s.piece.color == piece.color,
+            Some(s) => s.top().color == piece.color,
         })
     };
 
@@ -123,7 +124,7 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
         .board
         .iter()
         .filter_map(|(sq, bp)| {
-            (bp.piece.color == piece.color).then(|| {
+            (bp.top().color == piece.color).then(|| {
                 neighbors(sq)
                     .into_iter()
                     .filter_map(|sq| not_touching_other_color(sq).then(|| sq))
@@ -134,38 +135,37 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
 }
 
 
-type Stack = Option<Box<BPiece>>;
-
 #[derive(Debug, Serialize, Deserialize)]
-struct BPiece
+pub struct BoardSquare
 {
-    piece: Piece,
-    next:  Stack,
+    pieces: Vec<Piece>,
 }
 
-impl BPiece
+impl BoardSquare
 {
     fn new(piece: Piece) -> Self
     {
         Self {
-            piece,
-            next: None,
+            pieces: vec![piece]
         }
     }
 
-    fn with_bpiece(piece: Piece, bpiece: BPiece) -> Self
+    fn place_piece(&mut self, piece: Piece)
     {
-        Self {
-            piece,
-            next: Some(Box::new(bpiece)),
-        }
+        self.pieces.push(piece);
+    }
+
+    fn top(&self) -> &Piece
+    {
+        self.pieces.first().unwrap()
     }
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Board
 {
-    board:     HashMap<Square, BPiece>,
+    board:     HashMap<Square, BoardSquare>,
     pub turns: usize,
 }
 
@@ -180,24 +180,15 @@ impl Board
 
     pub fn place_piece(&mut self, piece: Piece, sq: Square)
     {
-        match self.board.remove(&sq)
-        {
-            Some(bpiece) =>
-            {
-                self.board.insert(sq, BPiece::with_bpiece(piece, bpiece));
-            },
-            None =>
-            {
-                self.board.insert(sq, BPiece::new(piece));
-            },
-        }
+        self.board
+            .entry(sq)
+            .and_modify(|bs| bs.place_piece(piece))
+            .or_insert_with(|| BoardSquare::new(piece));
 
         self.turns += 1;
     }
 }
 
-
-pub type Square = (isize, isize, isize);
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum BoardPiece
