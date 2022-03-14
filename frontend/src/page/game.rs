@@ -1,7 +1,8 @@
 use seed::{self, prelude::*, *};
 use shared::model::{Game, ResponseBody};
 use shared::{model::game::*, ObjectId};
-use web_sys::Event;
+use web_sys::SvgGraphicsElement;
+use web_sys::{Event, MouseEvent};
 
 #[derive(Default)]
 pub struct Model {
@@ -12,6 +13,8 @@ pub struct Model {
     menu: Vec<(Node<crate::Msg>, BoardPiece)>,
 
     piece: Option<_Hex>,
+
+    svg: ElRef<SvgGraphicsElement>,
 
     size: String,
     label: Option<String>,
@@ -51,6 +54,9 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     game: Some(Game::new(arr)),
                     //gridv3: create_gridv3(5),
                     gridv3,
+
+                    svg: ElRef::default(),
+
                     menu: create_menu(),
                     piece: None,
                     size,
@@ -65,8 +71,9 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 
 pub enum Msg {
     FetchGame(fetch::Result<String>),
-    BoardClick(_Hex),
     Move(Event),
+    Click(Event),
+    Release(Event),
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -91,26 +98,62 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             model.label = Some(format!("http error: {text:?}"));
         }
 
-        Msg::BoardClick(p) => {
-            if p.piece.is_some() {
-                model.piece = Some(p);
+        Msg::Click(event) => {
+            let mm = to_mouse_event(&event);
+
+            let (x, y) = get_mouse_pos(model, mm);
+            let sq = pixel_to_hex(x as isize, y as isize);
+
+
+            model.piece = model
+                .gridv3
+                .iter()
+                .find(|hex| hex.sq() == sq && hex.piece.is_some())
+                .map(|hex| {
+                    let mut hex = hex.clone();
+                    hex._x = x;
+                    hex._y = y;
+                    hex
+                })
+        }
+
+        Msg::Release(event) => {
+            let mm = to_mouse_event(&event);
+            let (x, y) = get_mouse_pos(model, mm);
+            let sq = pixel_to_hex(x as isize, y as isize);
+
+            if let Some(sel_hex) = model.piece.take() {
+                if let Some(hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sq) {
+                    hex.piece = sel_hex.piece;
+                }
+
+                if let Some(old_hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sel_hex.sq())
+                {
+                    old_hex.piece = None;
+                }
+            } else {
+                // place back or something
             }
         }
 
         Msg::Move(event) => {
             let mm = to_mouse_event(&event);
 
-            let (x, y) = (mm.client_x(), mm.client_y());
-            let (x, y) = (x as f32, y as f32);
-
-            log(format!("({x}, {y}) is some = {}", model.piece.is_some()));
-
+            let (x, y) = get_mouse_pos(model, mm);
             if let Some(piece) = model.piece.as_mut() {
                 piece._x = x;
                 piece._y = y;
             }
         }
     }
+}
+
+fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
+    let ctm = model.svg.get().unwrap().get_screen_ctm().unwrap();
+    let (x, y) = (mm.client_x(), mm.client_y());
+    let (x, y) = (x as f32, y as f32);
+
+    ((x - ctm.e()) / ctm.a(), (y - ctm.f()) / ctm.d())
 }
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
@@ -234,8 +277,16 @@ fn piece_menu(model: &Model) -> Node<crate::Msg> {
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
     svg![
+        el_ref(&model.svg),
         ev(Ev::MouseMove, |event| {
             crate::Msg::Game(Msg::Move(event))
+        }),
+        ev(Ev::MouseUp, |event| {
+            log("test??");
+            crate::Msg::Game(Msg::Release(event))
+        }),
+        ev(Ev::MouseDown, |event| {
+            crate::Msg::Game(Msg::Click(event))
         }),
         attrs! {
             At::ViewBox => "0 0 100 100",
@@ -288,6 +339,44 @@ impl Orientation {
             start_angle: 0.0,
         }
     }
+}
+
+fn round(_q: f32, _r: f32, _s: f32) -> Square {
+    let mut q = _q.round();
+    let mut r = _r.round();
+    let mut s = _s.round();
+
+    let q_diff = (q - _q).abs();
+    let r_diff = (r - _r).abs();
+    let s_diff = (s - _s).abs();
+
+    if q_diff > r_diff && q_diff > s_diff {
+        q = -r - s;
+    } else if r_diff > s_diff {
+        r = -q - s;
+    } else {
+        s = -q - r;
+    }
+    (q as isize, r as isize, s as isize)
+}
+
+#[allow(non_snake_case)]
+pub fn pixel_to_hex(x: isize, y: isize) -> Square {
+    let (x, y) = (x as f32 - 50., y as f32 - 50.);
+    const S: f32 = 5.1;
+
+    let x = x / S;
+    let y = y / S;
+
+
+    let q = 2.0 / 3.0 * x;
+    let r = (-1.0 / 3.0) * x + (3.0_f32.sqrt() / 3.0) * y;
+
+    let s = -q - r;
+
+    let f = round(q, r, s);
+    //(f.0 - 49, f.1 - 24, f.2 + 73)
+    f
 }
 
 #[derive(Clone)]
@@ -359,22 +448,15 @@ impl _Hex {
 
         let c = if self.highlight { "selected-piece" } else { "" };
 
-        let cl = self.clone();
-        r#use![
-            attrs! {
-                At::Href => "#pod",
-                At::Transform => format!("translate({x}, {y})"),
-                At::Fill => fill,
-                At::Stroke => "gold",
-                At::Opacity => opacity,
-                At::Class => c,
-                At::DropZone => "move",
-            },
-            ev(Ev::MouseDown, move |event| {
-                event.prevent_default();
-                crate::Msg::Game(Msg::BoardClick(cl))
-            })
-        ]
+        r#use![attrs! {
+            At::Href => "#pod",
+            At::Transform => format!("translate({x}, {y})"),
+            At::Fill => fill,
+            At::Stroke => "gold",
+            At::Opacity => opacity,
+            At::Class => c,
+            At::DropZone => "move",
+        },]
     }
 }
 
