@@ -76,6 +76,7 @@ pub enum Msg {
     Move(Event),
     Click(Event),
     Release(Event),
+    Place((String, Event)),
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -108,10 +109,11 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 
             model.piece = model
                 .gridv3
-                .iter()
+                .iter_mut()
                 .find(|hex| hex.sq() == sq && hex.top().is_some())
-                .map(|hex| {
-                    let mut hex = hex.clone();
+                .map(|old_hex| {
+                    let mut hex = old_hex.clone();
+                    old_hex.remove_top();
                     hex._x = x;
                     hex._y = y;
                     hex
@@ -124,31 +126,108 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let sq = pixel_to_hex(x as isize, y as isize);
 
             if let Some(mut sel_hex) = model.piece.take() {
-                if let Some(hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sq) {
-                    let top = sel_hex.remove_top().unwrap();
-                    hex.place_piece(top);
-                }
-
-
                 // remove previous square top piece
-                if let Some(old_hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sel_hex.sq())
-                {
-                    old_hex.remove_top();
+                let old_square = sel_hex.sq();
+                let top = sel_hex.remove_top().unwrap();
+
+                // Get the dropped hex
+                let legal = if let Some(hex) = get_hex_from_square(model, sq) {
+                    // if it is highlighted, aka, a leagal move, do the move
+                    if hex.selected {
+                        hex.place_piece(top);
+                        //let board = &mut model.game.as_mut().unwrap().board;
+                        //board.place_piece(top, hex.sq(), Some(sel_hex.sq()));
+                        Some(hex.sq())
+                    } else {
+                        // else place it back on the original square
+                        place_piece_back(model, sel_hex, top);
+                        None
+                    }
+                } else {
+                    // We did not find the piece, it is off screen
+                    place_piece_back(model, sel_hex, top);
+                    None
+                };
+                if let Some(new_square) = legal {
+                    log("test");
+                    let board = get_board_mut(model).unwrap();
+                    board.place_piece(top, new_square, Some(old_square));
                 }
-            } else {
-                // place back or something
             }
+            clear_highlighs(model);
         }
 
         Msg::Move(event) => {
             let mm = to_mouse_event(&event);
-
             let (x, y) = get_mouse_pos(model, mm);
-            if let Some(piece) = model.piece.as_mut() {
-                piece._x = x;
-                piece._y = y;
+            if let Some(hex) = model.piece.as_mut() {
+                hex._x = x;
+                hex._y = y;
+
+                let piece = hex.top().unwrap();
+                let board = &model.game.as_ref().unwrap().board;
+
+                log(format!("{:?}", piece));
+                let legal_moves = legal_moves(piece, board, Some(hex.sq()));
+                set_highlight(model, legal_moves, true);
             }
         }
+
+        Msg::Place((id, event)) => {
+            let mm = to_mouse_event(&event);
+            let (x, y) = get_mouse_pos(model, mm);
+            let sq = pixel_to_hex(x as isize, y as isize);
+
+
+            let r#type: BoardPiece = id.into();
+            // Todo fix
+            let color = if model.game.as_ref().unwrap().board.turns % 2 == 0 {
+                Color::White
+            } else {
+                Color::Black
+            };
+
+            let piece = Piece { r#type, color };
+            place_piece(model, piece, sq);
+            if let Some(ref mut b) = get_board_mut(model) {
+                b.place_piece(piece, sq, None);
+            }
+        }
+    }
+}
+
+fn place_piece_back(model: &mut Model, sel: Hex, piece: Piece) {
+    if let Some(old) = model.gridv3.iter_mut().find(|hex| hex.sq() == sel.sq()) {
+        old.place_piece(piece);
+    }
+}
+
+fn clear_highlighs(model: &mut Model) {
+    for hex in &mut model.gridv3 {
+        hex.selected = false;
+    }
+}
+
+fn set_highlight(model: &mut Model, moves: Vec<Square>, val: bool) {
+    for mov in moves {
+        get_hex_from_square(model, mov).as_mut().unwrap().selected = val;
+    }
+}
+
+fn get_board_mut(model: &mut Model) -> Option<&mut Board> {
+    model.game.as_mut().map(|game| &mut game.board)
+}
+fn get_board(model: &Model) -> Option<&Board> {
+    model.game.as_ref().map(|game| &game.board)
+}
+
+fn get_hex_from_square(model: &mut Model, sq: Square) -> Option<&mut Hex> {
+    model.gridv3.iter_mut().find(|hex| hex.sq() == sq)
+}
+
+fn place_piece(model: &mut Model, piece: Piece, sq: Square) {
+    if let Some(hex) = get_hex_from_square(model, sq) {
+        hex.place_piece(piece);
     }
 }
 
@@ -185,9 +264,29 @@ impl MenuItem {
 
         let stroke = piece_color(self.piece.r#type, self.piece.color);
 
-
+        let id = format!("{:?}", self.piece.r#type);
         div![
-            id!("test"),
+            ev(Ev::DragStart, |event| {
+                let ev = to_drag_event(&event);
+                use web_sys::{Element, HtmlDivElement};
+
+                let idv = event
+                    .current_target()
+                    .unwrap()
+                    .dyn_ref::<HtmlDivElement>()
+                    .unwrap()
+                    .clone();
+
+                let el: &Element = idv.as_ref();
+                let id = el.id();
+                // This is a big yikes; however, good enough for now.
+
+                ev.data_transfer()
+                    .unwrap()
+                    .set_data("text/plain", &id)
+                    .unwrap();
+            }),
+            id!(&id),
             style! {
                     St::Width => "90px",//self.spacing,
                     St::Height => "90px", // ??
@@ -272,29 +371,13 @@ fn piece_color(b: BoardPiece, color: Color) -> &'static str {
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
     div![
-        ev(Ev::DragEnter, |event| {
-            let ev = to_drag_event(&event);
-            ev.current_target();
-        }),
         ev(Ev::Drop, |event| {
-            event.prevent_default();
-            //to_mouse_event(&event);
-
-            use web_sys::HtmlDivElement;
-
-            let idv = event
-                .current_target()
-                .unwrap()
-                .dyn_ref::<HtmlDivElement>()
-                .unwrap()
-                .clone();
-
-            let al = idv.align();
-            log(format!("{:?}", idv));
-
-            // crate::Msg::Game(Msg::Place(event, ))
+            let ev = to_drag_event(&event);
+            let id = ev.data_transfer().unwrap().get_data("text/plain").unwrap();
+            crate::Msg::Game(Msg::Place((id, event)))
         }),
         ev(Ev::DragOver, |event| {
+            //log("DragOver");
             event.prevent_default();
         }),
         svg![

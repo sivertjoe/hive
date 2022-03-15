@@ -45,7 +45,7 @@ pub struct Piece
     pub color:  Color,
 }
 
-pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<Square>) -> Vec<Square>
+pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<Square>
 {
     /*let search_stack = |next: &Stack| match next
     {
@@ -80,10 +80,35 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: &Option<Square>) -> Vec<
 
             match board_pos
             {
-                Some(_pos) => vec![(2, -2, 0)],
+                Some(pos) => legal_on_board_move(p, board, pos),
                 None => legal_new_piece_moves(p, board),
             }
         },
+    }
+}
+
+
+fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
+{
+    match p.r#type
+    {
+        BoardPiece::Ant => board
+            .board
+            .iter()
+            .filter_map(|(s, _p)| {
+                // skip myself
+                if *s == sq
+                {
+                    None
+                }
+                else
+                {
+                    Some(neighbors(s).into_iter().filter(|s| !board.board.contains_key(&s)))
+                }
+            })
+            .flatten()
+            .collect(),
+        _ => vec![(-2, 2, 0)],
     }
 }
 
@@ -155,6 +180,11 @@ impl BoardSquare
         self.pieces.push(piece);
     }
 
+    fn remove_piece(&mut self)
+    {
+        self.pieces.pop();
+    }
+
     fn top(&self) -> &Piece
     {
         self.pieces.first().unwrap()
@@ -178,12 +208,22 @@ impl Board
         }
     }
 
-    pub fn place_piece(&mut self, piece: Piece, sq: Square)
+    pub fn place_piece(&mut self, piece: Piece, sq: Square, old: Option<Square>)
     {
         self.board
             .entry(sq)
             .and_modify(|bs| bs.place_piece(piece))
             .or_insert_with(|| BoardSquare::new(piece));
+
+        if let Some(sq) = old
+        {
+            let bs = self.board.get_mut(&sq).unwrap();
+            bs.remove_piece();
+            if bs.pieces.is_empty()
+            {
+                self.board.remove(&sq).unwrap();
+            }
+        }
 
         self.turns += 1;
     }
@@ -198,6 +238,23 @@ pub enum BoardPiece
     Spider,
     Beetle,
     Grasshopper,
+}
+
+impl From<String> for BoardPiece
+{
+    fn from(s: String) -> Self
+    {
+        use BoardPiece::*;
+        match s.as_str()
+        {
+            "Queen" => Queen,
+            "Ant" => Ant,
+            "Spider" => Spider,
+            "Beetle" => Beetle,
+            "Grasshopper" => Grasshopper,
+            _ => unreachable!(),
+        }
+    }
 }
 
 
