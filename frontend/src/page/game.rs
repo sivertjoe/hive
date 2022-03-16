@@ -1,22 +1,25 @@
 use seed::{self, prelude::*, *};
 use shared::model::{Game, ResponseBody};
 use shared::{model::game::*, ObjectId};
+use web_sys::Event;
 use web_sys::SvgGraphicsElement;
-use web_sys::{Event, MouseEvent};
+
+use crate::page::game_util::*;
 
 #[derive(Default)]
 pub struct Model {
-    game: Option<Game>,
+    pub game: Option<Game>,
 
-    gridv3: Vec<Hex>,
+    pub gridv3: Vec<Hex>,
 
-    piece: Option<Hex>,
-    menu: Vec<MenuItem>,
+    pub piece: Option<SelectedPiece>,
 
-    svg: ElRef<SvgGraphicsElement>,
+    pub menu: Vec<MenuItem>,
 
-    size: String,
-    label: Option<String>,
+    pub svg: ElRef<SvgGraphicsElement>,
+
+    pub size: String,
+    pub label: Option<String>,
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
@@ -107,17 +110,15 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let (x, y) = get_mouse_pos(model, mm);
             let sq = pixel_to_hex(x as isize, y as isize);
 
-            model.piece = model
-                .gridv3
-                .iter_mut()
-                .find(|hex| hex.sq() == sq && hex.top().is_some())
-                .map(|old_hex| {
-                    let mut hex = old_hex.clone();
-                    old_hex.remove_top();
-                    hex._x = x;
-                    hex._y = y;
-                    hex
-                })
+            if let Some(hex) = get_piece_from_square_mut(model, sq) {
+                let cl = hex.clone();
+                hex.remove_top();
+
+                let mut sel: SelectedPiece = cl.into();
+                sel.x = x;
+                sel.y = y;
+                model.piece = Some(sel);
+            }
         }
 
         Msg::Release(event) => {
@@ -125,50 +126,36 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let (x, y) = get_mouse_pos(model, mm);
             let sq = pixel_to_hex(x as isize, y as isize);
 
-            if let Some(mut sel_hex) = model.piece.take() {
-                // remove previous square top piece
-                let old_square = sel_hex.sq();
-                let top = sel_hex.remove_top().unwrap();
 
-                // Get the dropped hex
-                let legal = if let Some(hex) = get_hex_from_square(model, sq) {
-                    // if it is highlighted, aka, a leagal move, do the move
-                    if hex.selected {
-                        hex.place_piece(top);
-                        //let board = &mut model.game.as_mut().unwrap().board;
-                        //board.place_piece(top, hex.sq(), Some(sel_hex.sq()));
-                        Some(hex.sq())
-                    } else {
-                        // else place it back on the original square
-                        place_piece_back(model, sel_hex, top);
-                        None
-                    }
-                } else {
-                    // We did not find the piece, it is off screen
-                    place_piece_back(model, sel_hex, top);
-                    None
-                };
-                if let Some(new_square) = legal {
-                    log("test");
+
+            if let Some(selected_piece) = model.piece.take() {
+                if legal_move(model, sq) {
+                    // Place the piece
+                    get_hex_from_square(model, sq)
+                        .unwrap()
+                        .place_piece(selected_piece.piece.clone());
+
                     let board = get_board_mut(model).unwrap();
-                    board.place_piece(top, new_square, Some(old_square));
+                    board.place_piece(selected_piece.piece, sq, Some(selected_piece.old_square));
+                } else {
+                    place_piece_back(model, selected_piece);
                 }
             }
+
             clear_highlighs(model);
         }
 
         Msg::Move(event) => {
             let mm = to_mouse_event(&event);
             let (x, y) = get_mouse_pos(model, mm);
-            if let Some(hex) = model.piece.as_mut() {
-                hex._x = x;
-                hex._y = y;
+            if let Some(sel) = model.piece.as_mut() {
+                sel.x = x;
+                sel.y = y;
 
-                let piece = hex.top().unwrap();
+                let piece = &sel.piece;
                 let board = &model.game.as_ref().unwrap().board;
 
-                log(format!("{:?}", piece));
-                let legal_moves = legal_moves(piece, board, Some(hex.sq()));
+                let legal_moves = legal_moves(piece, board, Some(sel.old_square));
                 set_highlight(model, legal_moves, true);
             }
         }
@@ -194,49 +181,6 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             }
         }
     }
-}
-
-fn place_piece_back(model: &mut Model, sel: Hex, piece: Piece) {
-    if let Some(old) = model.gridv3.iter_mut().find(|hex| hex.sq() == sel.sq()) {
-        old.place_piece(piece);
-    }
-}
-
-fn clear_highlighs(model: &mut Model) {
-    for hex in &mut model.gridv3 {
-        hex.selected = false;
-    }
-}
-
-fn set_highlight(model: &mut Model, moves: Vec<Square>, val: bool) {
-    for mov in moves {
-        get_hex_from_square(model, mov).as_mut().unwrap().selected = val;
-    }
-}
-
-fn get_board_mut(model: &mut Model) -> Option<&mut Board> {
-    model.game.as_mut().map(|game| &mut game.board)
-}
-fn get_board(model: &Model) -> Option<&Board> {
-    model.game.as_ref().map(|game| &game.board)
-}
-
-fn get_hex_from_square(model: &mut Model, sq: Square) -> Option<&mut Hex> {
-    model.gridv3.iter_mut().find(|hex| hex.sq() == sq)
-}
-
-fn place_piece(model: &mut Model, piece: Piece, sq: Square) {
-    if let Some(hex) = get_hex_from_square(model, sq) {
-        hex.place_piece(piece);
-    }
-}
-
-fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
-    let ctm = model.svg.get().unwrap().get_screen_ctm().unwrap();
-    let (x, y) = (mm.client_x(), mm.client_y());
-    let (x, y) = (x as f32, y as f32);
-
-    ((x - ctm.e()) / ctm.a(), (y - ctm.f()) / ctm.d())
 }
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
@@ -349,26 +293,6 @@ async fn send_message(id: ObjectId) -> fetch::Result<String> {
         .await
 }
 
-fn piece_color(b: BoardPiece, color: Color) -> &'static str {
-    if color == Color::White {
-        match b {
-            BoardPiece::Queen => "gold",
-            BoardPiece::Ant => "blue",
-            BoardPiece::Spider => "peru",
-            BoardPiece::Grasshopper => "palegreen",
-            BoardPiece::Beetle => "rebeccapurple",
-        }
-    } else {
-        match b {
-            BoardPiece::Queen => "DarkGoldenRod",
-            BoardPiece::Ant => "MidnightBlue",
-            BoardPiece::Spider => "brown",
-            BoardPiece::Grasshopper => "green",
-            BoardPiece::Beetle => "indigo",
-        }
-    }
-}
-
 pub fn grid(model: &Model) -> Node<crate::Msg> {
     div![
         ev(Ev::Drop, |event| {
@@ -405,8 +329,7 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
             ]],
             model.gridv3.iter().map(Hex::node),
             IF!(model.piece.is_some() => {
-                let p = model.piece.as_ref().unwrap();
-                p.node_xy()
+                model.piece.as_ref().unwrap().node()
             })
         ]
     ]
@@ -484,29 +407,29 @@ pub fn pixel_to_hex(x: isize, y: isize) -> Square {
 
 #[derive(Clone)]
 pub struct Hex {
-    q: isize,
-    r: isize,
-    s: isize,
+    pub q: isize,
+    pub r: isize,
+    pub s: isize,
 
-    _x: f32,
-    _y: f32,
+    pub _x: f32,
+    pub _y: f32,
 
-    pieces: Vec<Piece>,
-    selected: bool,
+    pub pieces: Vec<Piece>,
+    pub selected: bool,
 
-    highlight: bool,
+    pub highlight: bool,
 }
 
 impl Hex {
-    fn top(&self) -> Option<&Piece> {
+    pub fn top(&self) -> Option<&Piece> {
         self.pieces.last()
     }
 
-    fn place_piece(&mut self, piece: Piece) {
+    pub fn place_piece(&mut self, piece: Piece) {
         self.pieces.push(piece);
     }
 
-    fn remove_top(&mut self) -> Option<Piece> {
+    pub fn remove_top(&mut self) -> Option<Piece> {
         self.pieces.pop()
     }
 
@@ -522,30 +445,10 @@ impl Hex {
         (x + 50.0, y + 50.0)
     }
 
-    fn sq(&self) -> Square {
+    pub fn sq(&self) -> Square {
         (self.q, self.r, self.s)
     }
 
-    fn node_xy(&self) -> Node<crate::Msg> {
-        let (x, y) = (self._x, self._y);
-        let opacity = match self.selected {
-            true => "0.5",
-            false => "1.0",
-        };
-
-        let fill = match self.top() {
-            Some(p) => piece_color(p.r#type, p.color),
-            None => "transparent",
-        };
-
-        r#use![attrs! {
-            At::Href => "#pod",
-            At::Transform => format!("translate({x}, {y})"),
-            At::Fill => fill,
-            At::Stroke => "gold",
-            At::Opacity => opacity,
-        },]
-    }
 
     fn node(&self) -> Node<crate::Msg> {
         let (x, y) = self.to_pixels();
