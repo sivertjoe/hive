@@ -80,6 +80,7 @@ pub enum Msg {
     Click(Event),
     Release(Event),
     Place((String, Event)),
+    Drag(Piece),
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -179,6 +180,14 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             if let Some(ref mut b) = get_board_mut(model) {
                 b.place_piece(piece, sq, None);
             }
+
+            clear_highlighs(model);
+        }
+
+        Msg::Drag(piece) => {
+            let board = get_board(model).unwrap();
+            let legal_moves = legal_moves(&piece, board, None);
+            set_highlight(model, legal_moves, true);
         }
     }
 }
@@ -207,10 +216,11 @@ impl MenuItem {
         let (x, y) = (self.x, self.y);
 
         let stroke = piece_color(self.piece.r#type, self.piece.color);
-
         let id = format!("{:?}", self.piece.r#type);
+
+        let piece_clone = self.piece.clone();
         div![
-            ev(Ev::DragStart, |event| {
+            ev(Ev::DragStart, move |event| {
                 let ev = to_drag_event(&event);
                 use web_sys::{Element, HtmlDivElement};
 
@@ -229,6 +239,9 @@ impl MenuItem {
                     .unwrap()
                     .set_data("text/plain", &id)
                     .unwrap();
+
+
+                crate::Msg::Game(Msg::Drag(piece_clone))
             }),
             id!(&id),
             style! {
