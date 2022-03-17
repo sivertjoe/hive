@@ -166,6 +166,29 @@ fn grass_hopper_move(board: &Board, sq: Square) -> Vec<Square>
     CUBE_DIR_VEC.into_iter().filter_map(explore_dir).collect()
 }
 
+fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
+{
+    neighbors(&sq)
+        .into_iter()
+        .filter(|s| *s != me)
+        .find(|s| dbg!(board.board.contains_key(dbg!(s))))
+        .is_some()
+}
+
+fn queen_move(board: &Board, sq: Square) -> Vec<Square>
+{
+    let is_vakant = |sq: Square| !board.board.contains_key(&sq);
+
+    let legal_square =
+        |square: &Square| is_vakant(*square) && square_has_neighbors(*square, board, sq);
+
+    neighbors(&sq)
+        .into_iter()
+        .inspect(|s| println!("{s:?}"))
+        .filter(legal_square)
+        .collect()
+}
+
 
 fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
 {
@@ -174,6 +197,7 @@ fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
         BoardPiece::Ant => ant_move(board, sq),
         BoardPiece::Beetle => beetle_move(board, sq),
         BoardPiece::Grasshopper => grass_hopper_move(board, sq),
+        BoardPiece::Queen => queen_move(board, sq),
         _ => vec![(-2, 2, 0)],
     }
 }
@@ -507,6 +531,34 @@ mod test
 
         let mut legal_moves = legal_moves(&grass_hopper, &board, Some(grass_hopper_square));
         let mut ans = vec![(-2, 0, 2), (0, -2, 2), (2, -2, 0), (2, 0, -2), (0, 2, -2), (-2, 2, 0)];
+
+        ans.sort();
+        legal_moves.sort();
+
+        assert_eq!(legal_moves, ans);
+    }
+
+
+    #[test]
+    fn test_queen_move_simple()
+    {
+        let mut board = Board::new();
+
+        let queen_square = (1, 0, -1);
+        let queen = Piece::new(BoardPiece::Queen, Color::White);
+
+        let pos = [
+            ((0, 0, 0), BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))),
+            (queen_square, BoardSquare::new(queen.clone())),
+        ];
+
+
+        board.board = HashMap::from_iter(pos.into_iter());
+        board.turns = 3;
+
+        println!("{:?}", board.board);
+        let mut legal_moves = legal_moves(&queen, &board, Some(queen_square));
+        let mut ans = vec![(1, -1, 0), (0, 1, -1)];
 
         ans.sort();
         legal_moves.sort();
