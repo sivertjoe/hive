@@ -213,7 +213,7 @@ impl BoardSquare
 
     fn top(&self) -> &Piece
     {
-        self.pieces.first().unwrap()
+        self.pieces.last().unwrap()
     }
 }
 
