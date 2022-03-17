@@ -144,6 +144,30 @@ fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
     }
 }
 
+fn grass_hopper_move(board: &Board, sq: Square) -> Vec<Square>
+{
+    const CUBE_DIR_VEC: [(isize, isize, isize); 6] =
+        [(1, 0, -1), (1, -1, 0), (0, -1, 1), (-1, 0, 1), (-1, 1, 0), (0, 1, -1)];
+
+    let sq_add = |a: Square, b: Square| (a.0 + b.0, a.1 + b.1, a.2 + b.2);
+
+
+    let explore_dir = |add: Square| {
+        let mut start = sq_add(sq, add);
+        let st = start;
+
+        while board.board.contains_key(&start)
+        {
+            start = sq_add(start, add);
+        }
+        (st != start).then(|| start)
+    };
+
+
+
+    CUBE_DIR_VEC.into_iter().filter_map(explore_dir).collect()
+}
+
 
 fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
 {
@@ -151,6 +175,7 @@ fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
     {
         BoardPiece::Ant => ant_move(board, sq),
         BoardPiece::Beetle => beetle_move(board, sq),
+        BoardPiece::Grasshopper => grass_hopper_move(board, sq),
         _ => vec![(-2, 2, 0)],
     }
 }
@@ -403,6 +428,87 @@ mod test
 
         let mut legal_moves = legal_moves(&beetle, &board, Some(beetle_square));
         let mut ans = neighbors(&beetle_square);
+
+        ans.sort();
+        legal_moves.sort();
+
+        assert_eq!(legal_moves, ans);
+    }
+
+
+    #[test]
+    fn test_grass_hopper_simple()
+    {
+        let mut board = Board::new();
+
+        let grass_hopper_square = (1, 0, -1);
+        let grass_hopper = Piece::new(BoardPiece::Grasshopper, Color::White);
+
+        let pos = [
+            ((0, 0, 0), BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))),
+            (grass_hopper_square, BoardSquare::new(grass_hopper.clone())),
+        ];
+
+
+        board.board = HashMap::from_iter(pos.into_iter());
+        board.turns = 3;
+
+        let mut legal_moves = legal_moves(&grass_hopper, &board, Some(grass_hopper_square));
+        let mut ans = vec![(-1, 0, 1)];
+
+        ans.sort();
+        legal_moves.sort();
+
+        assert_eq!(legal_moves, ans);
+    }
+
+    #[test]
+    fn test_grass_hopper_two_squares()
+    {
+        let mut board = Board::new();
+
+        let grass_hopper_square = (1, 0, -1);
+        let grass_hopper = Piece::new(BoardPiece::Grasshopper, Color::White);
+
+        let pos = [
+            ((0, 0, 0), BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))),
+            ((-1, 0, 1), BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))),
+            (grass_hopper_square, BoardSquare::new(grass_hopper.clone())),
+        ];
+
+
+        board.board = HashMap::from_iter(pos.into_iter());
+        board.turns = board.board.len();
+
+        let mut legal_moves = legal_moves(&grass_hopper, &board, Some(grass_hopper_square));
+        let mut ans = vec![(-2, 0, 2)];
+
+        ans.sort();
+        legal_moves.sort();
+
+        assert_eq!(legal_moves, ans);
+    }
+
+    #[test]
+    fn test_grass_hopper_surround()
+    {
+        let mut board = Board::new();
+
+        let grass_hopper_square = (0, 0, 0);
+        let grass_hopper = Piece::new(BoardPiece::Grasshopper, Color::White);
+
+        let mut pos = vec![(grass_hopper_square, BoardSquare::new(grass_hopper.clone()))];
+        for sq in neighbors(&grass_hopper_square)
+        {
+            pos.push((sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))));
+        }
+
+
+        board.board = HashMap::from_iter(pos.into_iter());
+        board.turns = board.board.len();
+
+        let mut legal_moves = legal_moves(&grass_hopper, &board, Some(grass_hopper_square));
+        let mut ans = vec![(-2, 0, 2), (0, -2, 2), (2, -2, 0), (2, 0, -2), (0, 2, -2), (-2, 2, 0)];
 
         ans.sort();
         legal_moves.sort();
