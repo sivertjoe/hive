@@ -83,6 +83,7 @@ code {
 td {
     padding-top: 5;
     font-size: 1.5rem;
+    width: 50%;
 }
 
 .challenge-table {
@@ -91,7 +92,7 @@ td {
   text-align: center;
   border: solid 1px var(--primary-color);
   border-radius: 0.5rem;
-  border-spacing: 1rem;
+  border-spacing: 0 1rem;
 }
 
 .container {

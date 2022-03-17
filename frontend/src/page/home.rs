@@ -198,11 +198,11 @@ fn ongoing_game<Ms: 'static>(game: &OnGoingGame) -> Node<Ms> {
     let id = game.game_object_id.to_string();
     let url = Url::new().add_path_part("game").add_path_part(&id);
     tr![
-        a![
-            attrs! { At::Href => url },
-            td![attrs! { At::Width => "50%" }, &game.players[0]]
-        ],
-        td![attrs! { At::Width => "50%" }, &game.players[1]],
+        ev(Ev::Click, move |_| {
+            url.go_and_load();
+        }),
+        td![&game.players[0]],
+        td![&game.players[1]],
     ]
 }
 
