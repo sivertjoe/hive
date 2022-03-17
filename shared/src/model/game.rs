@@ -121,6 +121,7 @@ fn ant_move(board: &Board, sq: Square) -> Vec<Square>
 
 fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
 {
+    // TODO: Improve this, look at square_has_neighbors
     let def = || {
         let have_neighbor = |square: &Square| {
             sq != *square
@@ -136,10 +137,7 @@ fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
 
     match board.board.get(&sq)
     {
-        Some(bs) if bs.pieces.len() > 1 =>
-        {
-            neighbors(&sq).into_iter().filter(|sq| !board.board.contains_key(sq)).collect()
-        },
+        Some(bs) if bs.pieces.len() > 1 => neighbors(&sq).into_iter().collect(),
         _ => def(),
     }
 }
