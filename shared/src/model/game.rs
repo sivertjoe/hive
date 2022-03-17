@@ -45,6 +45,17 @@ pub struct Piece
     pub color:  Color,
 }
 
+impl Piece
+{
+    fn new(r#type: BoardPiece, color: Color) -> Self
+    {
+        Self {
+            color,
+            r#type,
+        }
+    }
+}
+
 pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<Square>
 {
     /*let search_stack = |next: &Stack| match next
@@ -88,46 +99,61 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<S
 }
 
 
+fn ant_move(board: &Board, sq: Square) -> Vec<Square>
+{
+    board
+        .board
+        .iter()
+        .filter_map(|(s, _p)| {
+            // skip myself
+            if *s == sq
+            {
+                None
+            }
+            else
+            {
+                Some(neighbors(s).into_iter().filter(|s| !board.board.contains_key(&s)))
+            }
+        })
+        .flatten()
+        .collect()
+}
+
+fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
+{
+    let def = || {
+        let have_neighbor = |square: &Square| {
+            sq != *square
+                && (board.board.contains_key(square)
+                    || neighbors(square)
+                        .into_iter()
+                        .find(|_sq| *_sq != sq && board.board.contains_key(_sq))
+                        .is_some())
+        };
+
+        neighbors(&sq).into_iter().filter(have_neighbor).collect()
+    };
+
+    match board.board.get(&sq)
+    {
+        Some(bs) if bs.pieces.len() > 1 =>
+        {
+            neighbors(&sq).into_iter().filter(|sq| !board.board.contains_key(sq)).collect()
+        },
+        _ => def(),
+    }
+}
+
+
 fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
 {
     match p.r#type
     {
-        BoardPiece::Ant => board
-            .board
-            .iter()
-            .filter_map(|(s, _p)| {
-                // skip myself
-                if *s == sq
-                {
-                    None
-                }
-                else
-                {
-                    Some(neighbors(s).into_iter().filter(|s| !board.board.contains_key(&s)))
-                }
-            })
-            .flatten()
-            .collect(),
+        BoardPiece::Ant => ant_move(board, sq),
+        BoardPiece::Beetle => beetle_move(board, sq),
         _ => vec![(-2, 2, 0)],
     }
 }
-
-// Actually, just use the _Hex::to_pixel method in reverse??
-pub fn pixel_to_hex(x: isize, y: isize) -> Square
-{
-    let (x, y) = (x as f32, y as f32);
-    const S: f32 = 5.1;
-
-    let (q, r) = ((2.0 / 3.0 * x) / S, (-1.0 / 3.0 * x + 3.0_f32.sqrt() / 3.0 * y) / S);
-
-
-    let q = q.round() as isize;
-    let r = r.round() as isize;
-    let s = -q - r;
-
-    (q, r, s)
-}
-
 
 // Hmm, t-this can be simplified r-right?
 fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
@@ -302,5 +328,85 @@ mod test
             (-1, -1, 2),
             (-1, -2, 3)
         ]));
+    }
+
+
+    #[test]
+    fn test_beetle_correct_moves_simple()
+    {
+        let mut board = Board::new();
+
+        let beetle_square = (1, 0, -1);
+        let beetle = Piece::new(BoardPiece::Beetle, Color::White);
+
+        let pos = [
+            ((0, 0, 0), BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))),
+            (beetle_square, BoardSquare::new(beetle.clone())),
+        ];
+
+
+        board.board = HashMap::from_iter(pos.into_iter());
+        board.turns = board.board.len();
+
+        let mut legal_moves = legal_moves(&beetle, &board, Some(beetle_square));
+        let mut ans = vec![(1, -1, 0), (0, 0, 0), (0, 1, -1)];
+
+        ans.sort();
+        legal_moves.sort();
+
+        assert_eq!(legal_moves, ans);
+    }
+
+    #[test]
+    fn test_beetle_correct_moves_on_top()
+    {
+        let mut board = Board::new();
+
+        let beetle_square = (0, 0, 0);
+        let beetle = Piece::new(BoardPiece::Beetle, Color::White);
+
+        board.place_piece(Piece::new(BoardPiece::Ant, Color::Black), beetle_square, None);
+        board.place_piece(beetle, beetle_square, None);
+
+
+        board.turns = 3;
+
+        let mut legal_moves = legal_moves(&beetle, &board, Some(beetle_square));
+        let mut ans = neighbors(&beetle_square);
+
+
+        ans.sort();
+        legal_moves.sort();
+
+
+        assert_eq!(legal_moves, ans);
+        assert_eq!(legal_moves.len(), ans.len());
+    }
+
+    #[test]
+    fn test_beetle_correct_moves_surrounded()
+    {
+        let mut board = Board::new();
+
+        let beetle_square = (0, 0, 0);
+        let beetle = Piece::new(BoardPiece::Beetle, Color::White);
+
+        let mut vec = vec![(beetle_square, BoardSquare::new(beetle.clone()))];
+        for sq in neighbors(&beetle_square)
+        {
+            vec.push((sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))));
+        }
+
+
+        board.board = HashMap::from_iter(vec.into_iter());
+        board.turns = board.board.len();
+
+        let mut legal_moves = legal_moves(&beetle, &board, Some(beetle_square));
+        let mut ans = neighbors(&beetle_square);
+
+        ans.sort();
+        legal_moves.sort();
+
+        assert_eq!(legal_moves, ans);
     }
 }
