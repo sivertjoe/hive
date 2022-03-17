@@ -1,7 +1,7 @@
 use hyper::{Body, Method, Request, Response};
 use mongodb::{bson::oid::ObjectId, Client};
 
-use super::{bad_request, method_not_allowed, ok};
+use super::{bad_request, error, method_not_allowed, ok};
 use crate::database::{get_active_games, get_game_by_id, LIVE};
 
 
@@ -59,6 +59,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
             },
             _ => Response::new(bad_request()),
         },
+        Method::POST => Response::new(error(crate::database::DatabaseError::NoDocumentFound)),
         _ => Response::new(method_not_allowed()),
     }
 }

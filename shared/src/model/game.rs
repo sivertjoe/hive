@@ -5,6 +5,16 @@ use serde::{Deserialize, Serialize};
 
 pub type Square = (isize, isize, isize);
 
+
+#[derive(Serialize, Deserialize)]
+pub struct Move
+{
+    pub player_id: ObjectId,
+    pub piece:     Piece,
+    pub sq:        Square,
+    pub old_sq:    Option<Square>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct OnGoingGame
 {
@@ -15,13 +25,13 @@ pub struct OnGoingGame
 #[derive(Serialize, Deserialize)]
 pub struct Game
 {
-    pub players: [ObjectId; 2],
+    pub players: [(ObjectId, Color); 2],
     pub board:   Board,
 }
 
 impl Game
 {
-    pub fn new(players: [ObjectId; 2]) -> Self
+    pub fn new(players: [(ObjectId, Color); 2]) -> Self
     {
         Self {
             players,
@@ -47,6 +57,7 @@ pub struct Piece
 
 impl Piece
 {
+    #[allow(dead_code)]
     fn new(r#type: BoardPiece, color: Color) -> Self
     {
         Self {

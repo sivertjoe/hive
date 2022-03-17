@@ -33,33 +33,11 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
             Ok(id) => {
-                //orders.perform_cmd(async move { Msg::FetchGame(send_message(id).await) });
+                orders.perform_cmd(async move { Msg::FetchGame(send_message(id).await) });
                 let size = gen_size(0.5);
 
-
-                let arr = [
-                    ObjectId::parse_str("507f1f77bcf86cd799439011").unwrap(),
-                    ObjectId::parse_str("507f1f77bcf86cd799439011").unwrap(),
-                ];
-
-                /*let mut gridv3 = create_gridv3(3);
-                gridv3
-                    .iter_mut()
-                    .find(|h| h.sq() == (0, 0, 0))
-                    .unwrap()
-                    .pieces = vec![
-                    Piece {
-                        r#type: BoardPiece::Ant,
-                        color: Color::White,
-                    },
-                    Piece {
-                        r#type: BoardPiece::Beetle,
-                        color: Color::Black,
-                    },
-                ];*/
-
                 Some(Model {
-                    game: Some(Game::new(arr)),
+                    game: None,
                     gridv3: create_gridv3(3),
                     menu: create_menu(),
                     svg: ElRef::default(),
@@ -76,6 +54,8 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 
 pub enum Msg {
     FetchGame(fetch::Result<String>),
+    SentMove(fetch::Result<String>),
+
     Move(Event),
     Click(Event),
     Release(Event),
@@ -84,27 +64,36 @@ pub enum Msg {
     MouseUp(Event),
 }
 
-pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
+pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
+    let parse_resp = |resp: fetch::Result<String>| -> Result<ResponseBody, String> {
+        resp.map_err(|e| format!("{e:?}"))
+            .and_then(|text| {
+                serde_json::from_str::<ResponseBody>(&text).map_err(|e| format!("{e:?}"))
+            })
+            .and_then(|resp| {
+                if resp.status == 200 {
+                    Ok(resp)
+                } else {
+                    Err("wrong statuscode".into())
+                }
+            })
+    };
     match msg {
-        Msg::FetchGame(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text) {
-            Ok(resp) => match resp.status {
-                200 => {
-                    let game: Game = resp.get_body();
-                    model.game = Some(game);
-                }
+        Msg::SentMove(resp) => {
+            if let Err(e) = parse_resp(resp) {
+                model.label = Some(format!("{e:?}"));
+            }
+        }
 
-                e => {
-                    model.label = Some(format!("expected 200 got {e}"));
-                }
-            },
+        Msg::FetchGame(res) => match parse_resp(res) {
+            Ok(resp) => {
+                let game: Game = resp.get_body();
+                model.game = Some(game);
+            }
             Err(e) => {
-                model.label = Some(format!("serde error: {e}"));
+                model.label = Some(format!("expected 200 got {e}"));
             }
         },
-
-        Msg::FetchGame(Err(text)) => {
-            model.label = Some(format!("http error: {text:?}"));
-        }
 
         Msg::Click(event) => {
             let mm = to_mouse_event(&event);
@@ -130,24 +119,30 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let (x, y) = get_mouse_pos(model, mm);
             let sq = pixel_to_hex(x as isize, y as isize);
 
+            if mm.button() != 0 {
+                return;
+            }
 
-            if mm.button() == 0 {
-                if let Some(selected_piece) = model.piece.take() {
-                    if legal_move(model, sq) {
-                        // Place the piece
-                        get_hex_from_square(model, sq)
-                            .unwrap()
-                            .place_piece(selected_piece.piece.clone());
+            if let Some(selected_piece) = model.piece.take() {
+                if legal_move(model, sq) {
+                    // Place the piece
+                    get_hex_from_square(model, sq)
+                        .unwrap()
+                        .place_piece(selected_piece.piece.clone());
 
-                        let board = get_board_mut(model).unwrap();
-                        board.place_piece(
-                            selected_piece.piece,
-                            sq,
-                            Some(selected_piece.old_square),
-                        );
-                    } else {
-                        place_piece_back(model, selected_piece);
+                    let board = get_board_mut(model).unwrap();
+                    board.place_piece(selected_piece.piece, sq, Some(selected_piece.old_square));
+
+                    if let Some(r#move) = get_move(
+                        model,
+                        selected_piece.piece,
+                        sq,
+                        Some(selected_piece.old_square),
+                    ) {
+                        orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                     }
+                } else {
+                    place_piece_back(model, selected_piece);
                 }
 
                 clear_highlighs(model);
@@ -185,9 +180,14 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             };
 
             let piece = Piece { r#type, color };
-            place_piece(model, piece, sq);
-            if let Some(ref mut b) = get_board_mut(model) {
-                b.place_piece(piece, sq, None);
+            if legal_move(model, sq) {
+                place_piece(model, piece, sq);
+                if let Some(ref mut b) = get_board_mut(model) {
+                    b.place_piece(piece, sq, None);
+                }
+                if let Some(r#move) = get_move(model, piece, sq, None) {
+                    orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
+                }
             }
 
             clear_highlighs(model);
@@ -332,6 +332,20 @@ async fn send_message(id: ObjectId) -> fetch::Result<String> {
         .check_status()?
         .text()
         .await
+}
+
+async fn send_move(r#move: Move) -> fetch::Result<String> {
+    Request::new(format!(
+        "http://0.0.0.0:5000/game?q={id}",
+        id = &r#move.player_id
+    ))
+    .method(Method::Post)
+    .json(&r#move)?
+    .fetch()
+    .await?
+    .check_status()?
+    .text()
+    .await
 }
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {

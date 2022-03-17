@@ -1,6 +1,6 @@
 use crate::page::game::*;
 use seed::{self, prelude::*, *};
-use shared::model::game::*;
+use shared::{model::game::*, ObjectId};
 use web_sys::MouseEvent;
 
 pub fn get_board_mut(model: &mut Model) -> Option<&mut Board> {
@@ -129,4 +129,23 @@ pub fn set_highlight(model: &mut Model, moves: Vec<Square>, val: bool) {
     for mov in moves {
         get_hex_from_square(model, mov).as_mut().unwrap().selected = val;
     }
+}
+
+pub fn get_move(model: &Model, sel: Piece, sq: Square, old_sq: Option<Square>) -> Option<Move> {
+    let id: Result<ObjectId, _> = LocalStorage::get("id");
+    if let Ok(id) = id {
+        if let Some((id, _)) = model
+            .game
+            .as_ref()
+            .and_then(|game| game.players.iter().find(|(_id, _)| id == *_id))
+        {
+            return Some(Move {
+                piece: sel,
+                player_id: *id,
+                old_sq,
+                sq,
+            });
+        }
+    }
+    None
 }

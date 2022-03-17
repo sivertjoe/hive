@@ -172,8 +172,17 @@ pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> Database
 
     let games = db.collection::<Game>(GAMES);
 
+
+    // @NOTE: Take a look at this in the future haha Xdd
+    use getrandom::getrandom;
+    let mut byte = [0_u8];
+    getrandom(&mut byte).expect("random");
+
+    let colors =
+        if byte[0] >= 128 { [Color::White, Color::Black] } else { [Color::Black, Color::White] };
+
     let id = games
-        .insert_one(Game::new([creator, user]), None)
+        .insert_one(Game::new([(creator, colors[0]), (user, colors[1])]), None)
         .await?
         .inserted_id
         .as_object_id()
