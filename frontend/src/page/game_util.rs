@@ -119,6 +119,12 @@ pub fn clear_highlighs(model: &mut Model) {
     }
 }
 
+pub fn clear_red(model: &mut Model) {
+    for hex in &mut model.gridv3 {
+        hex.red = false;
+    }
+}
+
 pub fn set_highlight(model: &mut Model, moves: Vec<Square>, val: bool) {
     for mov in moves {
         get_hex_from_square(model, mov).as_mut().unwrap().selected = val;

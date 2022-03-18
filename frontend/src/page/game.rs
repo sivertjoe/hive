@@ -81,6 +81,7 @@ pub enum Msg {
     Release(Event),
     Place((String, Event)),
     Drag(Piece),
+    MouseUp(Event),
 }
 
 pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
@@ -107,19 +108,21 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
 
         Msg::Click(event) => {
             let mm = to_mouse_event(&event);
+            if mm.button() == 0 {
+                let (x, y) = get_mouse_pos(model, mm);
+                let sq = pixel_to_hex(x as isize, y as isize);
 
-            let (x, y) = get_mouse_pos(model, mm);
-            let sq = pixel_to_hex(x as isize, y as isize);
+                if let Some(hex) = get_piece_from_square_mut(model, sq) {
+                    let cl = hex.clone();
+                    hex.remove_top();
 
-            if let Some(hex) = get_piece_from_square_mut(model, sq) {
-                let cl = hex.clone();
-                hex.remove_top();
-
-                let mut sel: SelectedPiece = cl.into();
-                sel.x = x;
-                sel.y = y;
-                model.piece = Some(sel);
+                    let mut sel: SelectedPiece = cl.into();
+                    sel.x = x;
+                    sel.y = y;
+                    model.piece = Some(sel);
+                }
             }
+            // clear_red(model);
         }
 
         Msg::Release(event) => {
@@ -128,22 +131,28 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let sq = pixel_to_hex(x as isize, y as isize);
 
 
+            if mm.button() == 0 {
+                if let Some(selected_piece) = model.piece.take() {
+                    if legal_move(model, sq) {
+                        // Place the piece
+                        get_hex_from_square(model, sq)
+                            .unwrap()
+                            .place_piece(selected_piece.piece.clone());
 
-            if let Some(selected_piece) = model.piece.take() {
-                if legal_move(model, sq) {
-                    // Place the piece
-                    get_hex_from_square(model, sq)
-                        .unwrap()
-                        .place_piece(selected_piece.piece.clone());
-
-                    let board = get_board_mut(model).unwrap();
-                    board.place_piece(selected_piece.piece, sq, Some(selected_piece.old_square));
-                } else {
-                    place_piece_back(model, selected_piece);
+                        let board = get_board_mut(model).unwrap();
+                        board.place_piece(
+                            selected_piece.piece,
+                            sq,
+                            Some(selected_piece.old_square),
+                        );
+                    } else {
+                        place_piece_back(model, selected_piece);
+                    }
                 }
-            }
 
-            clear_highlighs(model);
+                clear_highlighs(model);
+                clear_red(model);
+            }
         }
 
         Msg::Move(event) => {
@@ -188,6 +197,25 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let board = get_board(model).unwrap();
             let legal_moves = legal_moves(&piece, board, None);
             set_highlight(model, legal_moves, true);
+        }
+
+        Msg::MouseUp(event) => {
+            let mm = to_mouse_event(&event);
+            // Secondary button, i.e, right-click
+            if mm.button() == 2 {
+                let (x, y) = get_mouse_pos(model, mm);
+                let sq = pixel_to_hex(x as isize, y as isize);
+
+                if let Some(hex) = get_hex_from_square(model, sq) {
+                    hex.red = !hex.red;
+                }
+            }
+            // main button, i.e, left-click
+            // should this not be 1?
+            // https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons
+            else if mm.button() == 0 {
+                clear_red(model);
+            }
         }
     }
 }
@@ -317,12 +345,19 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
             //log("DragOver");
             event.prevent_default();
         }),
+        ev(Ev::ContextMenu, |event| {
+            event.prevent_default();
+        }),
+        ev(Ev::MouseUp, |event| {
+            crate::Msg::Game(Msg::MouseUp(event))
+        }),
         svg![
             el_ref(&model.svg),
             ev(Ev::MouseMove, |event| {
                 crate::Msg::Game(Msg::Move(event))
             }),
             ev(Ev::MouseUp, |event| {
+                event.prevent_default();
                 crate::Msg::Game(Msg::Release(event))
             }),
             ev(Ev::MouseDown, |event| {
@@ -431,9 +466,24 @@ pub struct Hex {
     pub selected: bool,
 
     pub highlight: bool,
+    pub red: bool,
 }
 
 impl Hex {
+    pub fn new(q: isize, r: isize, s: isize) -> Self {
+        Self {
+            q,
+            r,
+            s,
+            _x: 0.,
+            _y: 0.,
+            pieces: Vec::new(),
+            selected: false,
+            highlight: false,
+            red: false,
+        }
+    }
+
     pub fn top(&self) -> Option<&Piece> {
         self.pieces.last()
     }
@@ -471,10 +521,15 @@ impl Hex {
             false => "1.0",
         };
 
-        let fill = match (self.top(), self.selected) {
-            (Some(p), _) => piece_color(p.r#type, p.color),
-            (None, false) => "transparent",
-            (None, true) => "grey",
+
+
+        // @NOTE: red highlight removes any other color,
+        // Improve this when using actual images.
+        let fill = match (self.red, self.top(), self.selected) {
+            (true, _, _) => "red",
+            (_, Some(p), _) => piece_color(p.r#type, p.color),
+            (_, None, false) => "transparent",
+            (_, None, true) => "grey",
         };
 
         let c = if self.highlight { "selected-piece" } else { "" };
@@ -501,16 +556,7 @@ fn create_gridv3(r: usize) -> Vec<Hex> {
         let r2 = min(r, -q + r);
 
         for r in r1..=r2 {
-            vec.push(Hex {
-                q,
-                r,
-                s: -q - r,
-                selected: false,
-                pieces: Vec::new(),
-                highlight: false,
-                _x: 0.0,
-                _y: 0.0,
-            });
+            vec.push(Hex::new(q, r, -q - r));
         }
     }
     vec
