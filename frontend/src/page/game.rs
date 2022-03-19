@@ -1,5 +1,5 @@
 use seed::{self, prelude::*, *};
-use shared::model::{Game, ResponseBody};
+use shared::model::ResponseBody;
 use shared::{model::game::*, ObjectId};
 use web_sys::Event;
 use web_sys::SvgGraphicsElement;
@@ -8,15 +8,12 @@ use crate::page::game_util::*;
 
 #[derive(Default)]
 pub struct Model {
-    pub game: Option<Game>,
-
+    pub game: Option<GameResource>,
     pub gridv3: Vec<Hex>,
-
     pub piece: Option<SelectedPiece>,
-
     pub menu: Vec<MenuItem>,
-
     pub svg: ElRef<SvgGraphicsElement>,
+    pub color: Option<Color>,
 
     pub size: String,
     pub label: Option<String>,
@@ -41,6 +38,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     gridv3: create_gridv3(3),
                     menu: create_menu(),
                     svg: ElRef::default(),
+                    color: None,
                     piece: None,
                     size,
                     label: None,
@@ -87,8 +85,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         Msg::FetchGame(res) => match parse_resp(res) {
             Ok(resp) => {
-                let game: Game = resp.get_body();
+                let game: GameResource = resp.get_body();
+
+                model.color = get_color(&game);
                 model.game = Some(game);
+                grid_from_board(model);
             }
             Err(e) => {
                 model.label = Some(format!("expected 200 got {e}"));
@@ -224,7 +225,9 @@ pub fn view(model: &Model) -> Node<crate::Msg> {
     div![div![
         C!("container"),
         grid(model),
-        div![C!("piece-menu"), piece_menu(model)],
+        IF!(model.color.is_some() =>
+            div![C!("piece-menu"), piece_menu(model)]
+        ),
         IF!(model.label.is_some() => match model.label {
             Some(ref s) => h2! [C!("error"), s],
             _ => unreachable!()

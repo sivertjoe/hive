@@ -133,19 +133,40 @@ pub fn set_highlight(model: &mut Model, moves: Vec<Square>, val: bool) {
 
 pub fn get_move(model: &Model, sel: Piece, sq: Square, old_sq: Option<Square>) -> Option<Move> {
     let id: Result<ObjectId, _> = LocalStorage::get("id");
-    if let Ok(id) = id {
-        if let Some((id, _)) = model
-            .game
-            .as_ref()
-            .and_then(|game| game.players.iter().find(|(_id, _)| id == *_id))
-        {
+    let name: Result<String, _> = LocalStorage::get("name");
+
+    if let (Ok(id), Ok(name)) = (id, name) {
+        if model.game.as_ref().map_or(false, |game| {
+            game.players.iter().find(|_name| &&name == _name).is_some()
+        }) {
             return Some(Move {
                 piece: sel,
-                player_id: *id,
+                player_id: id,
                 old_sq,
                 sq,
             });
         }
     }
     None
+}
+
+pub fn get_color(game: &GameResource) -> Option<Color> {
+    LocalStorage::get("name").ok().and_then(|name: String| {
+        game.players
+            .iter()
+            .position(|n| n == &name)
+            .map(|i| match i {
+                0 => Color::White,
+                _ => Color::Black,
+            })
+    })
+}
+
+pub fn grid_from_board(model: &mut Model) {
+    for (&sq, board_square) in model.game.as_ref().unwrap().board.board.iter() {
+        for piece in &board_square.pieces {
+            let hex = model.gridv3.iter_mut().find(|hex| hex.sq() == sq).unwrap();
+            hex.place_piece(*piece);
+        }
+    }
 }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 pub type Square = (isize, isize, isize);
 type Name = String;
@@ -69,7 +70,7 @@ pub struct Piece
 impl Piece
 {
     #[allow(dead_code)]
-    fn new(r#type: BoardPiece, color: Color) -> Self
+    pub fn new(r#type: BoardPiece, color: Color) -> Self
     {
         Self {
             color,
@@ -258,7 +259,7 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BoardSquare
 {
-    pieces: Vec<Piece>,
+    pub pieces: Vec<Piece>,
 }
 
 impl BoardSquare
@@ -287,10 +288,12 @@ impl BoardSquare
 }
 
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Board
 {
-    board:     HashMap<Square, BoardSquare>,
+    #[serde_as(as = "Vec<(_, _)>")]
+    pub board: HashMap<Square, BoardSquare>,
     pub turns: usize,
 }
 

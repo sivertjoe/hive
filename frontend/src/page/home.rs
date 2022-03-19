@@ -18,8 +18,12 @@ pub fn init(orders: &mut impl Orders<Msg>) -> Model {
         .skip()
         .perform_cmd(async { Msg::FetchedAvailableGames(get_all_games().await) })
         .perform_cmd(async {
-            let id = LocalStorage::get("id").unwrap_or_else(|_| String::new());
-            Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
+            let id: Result<ObjectId, _> = LocalStorage::get("id");
+            if let Ok(id) = id {
+                Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
+            } else {
+                Msg::FetchedCreateGame(send_message("noid", "home", Method::Post).await)
+            }
         });
 
     Model {

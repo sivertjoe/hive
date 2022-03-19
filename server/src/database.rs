@@ -1,4 +1,4 @@
-use futures::{stream, stream::StreamExt};
+use futures::stream::StreamExt;
 use mongodb::{
     bson::{self, doc, oid::ObjectId},
     error::Error,
