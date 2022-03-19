@@ -4,6 +4,7 @@ use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
 pub type Square = (isize, isize, isize);
+type Name = String;
 
 
 #[derive(Serialize, Deserialize)]
@@ -19,19 +20,29 @@ pub struct Move
 pub struct OnGoingGame
 {
     pub game_object_id: ObjectId,
-    pub players:        [String; 2],
+    pub players:        [Name; 2],
 }
 
+
+// Database representation
 #[derive(Serialize, Deserialize)]
 pub struct Game
 {
-    pub players: [(ObjectId, Color); 2],
+    players:   [ObjectId; 2],
+    pub board: Board,
+}
+
+// Remove ObjectId basically
+#[derive(Serialize, Deserialize)]
+pub struct GameResource
+{
+    pub players: [Name; 2],
     pub board:   Board,
 }
 
 impl Game
 {
-    pub fn new(players: [(ObjectId, Color); 2]) -> Self
+    pub fn new(players: [ObjectId; 2]) -> Self
     {
         Self {
             players,

@@ -1,4 +1,4 @@
-use futures::stream::StreamExt;
+use futures::{stream, stream::StreamExt};
 use mongodb::{
     bson::{self, doc, oid::ObjectId},
     error::Error,
@@ -178,11 +178,10 @@ pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> Database
     let mut byte = [0_u8];
     getrandom(&mut byte).expect("random");
 
-    let colors =
-        if byte[0] >= 128 { [Color::White, Color::Black] } else { [Color::Black, Color::White] };
+    let players = if byte[0] >= 128 { [creator, user] } else { [user, creator] };
 
     let id = games
-        .insert_one(Game::new([(creator, colors[0]), (user, colors[1])]), None)
+        .insert_one(Game::new(players), None)
         .await?
         .inserted_id
         .as_object_id()
@@ -247,7 +246,6 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
      *
      */
 
-    use futures::stream;
     Ok(col
         .aggregate(
             [
@@ -269,23 +267,51 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
             None,
         )
         .await?
-        .flat_map(|doc| {
+        .map(|doc| {
             let doc = doc.unwrap();
-            stream::iter(bson::from_document::<OnGoingGame>(doc))
+            let g: OnGoingGame = bson::from_document(doc).unwrap();
+            g
         })
         .collect()
         .await)
 }
 
 
-pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<Game>
+// @NOTE: What the fuck. Fix this ASAP. Something IS NOT RIGHT
+pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<GameResource>
 {
     let col = db.collection::<Game>(GAMES);
-    match col.find_one(doc! { "_id": id }, None).await?
-    {
-        Some(game) => Ok(game),
-        None => Err(DatabaseError::NoDocumentFound),
-    }
+    col.aggregate(
+        [
+            doc! {
+                "$match": { "_id": &id }
+            },
+            doc! {
+                "$lookup": {
+                    "from": USERS,
+                    "localField": "players",
+                    "foreignField": "_id",
+                    "as": "players"
+                }
+            },
+            doc! {
+                "$project": {
+                    "players": "$players.name",
+                    "board": "$board",
+                }
+            },
+        ],
+        None,
+    )
+    .await?
+    .map(|doc| {
+        let doc = doc.unwrap();
+        let g: GameResource = bson::from_document(doc).unwrap();
+        g
+    })
+    .next()
+    .await
+    .ok_or(DatabaseError::NoDocumentFound)
 }
 
 
