@@ -129,7 +129,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     // Place the piece
                     get_hex_from_square(model, sq)
                         .unwrap()
-                        .place_piece(selected_piece.piece.clone());
+                        .place_piece(selected_piece.piece);
 
                     let board = get_board_mut(model).unwrap();
                     board.place_piece(selected_piece.piece, sq, Some(selected_piece.old_square));
@@ -249,7 +249,7 @@ impl MenuItem {
         let stroke = piece_color(self.piece.r#type, self.piece.color);
         let id = format!("{:?}", self.piece.r#type);
 
-        let piece_clone = self.piece.clone();
+        let piece_clone = self.piece;
         div![
             ev(Ev::DragStart, move |event| {
                 let ev = to_drag_event(&event);
@@ -465,9 +465,7 @@ pub fn pixel_to_hex(x: isize, y: isize) -> Square {
 
     let s = -q - r;
 
-    let f = round(q, r, s);
-    //(f.0 - 49, f.1 - 24, f.2 + 73)
-    f
+    round(q, r, s)
 }
 
 #[derive(Clone)]

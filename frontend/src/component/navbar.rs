@@ -19,7 +19,7 @@ pub fn view(model: &Model) -> Node<Msg> {
                 create_link("Login", url().login()),
                 create_link("Create", url().create()),
                 IF!(model.user.is_some() => match &model.user {
-                    Some(name) => create_link(&name, url().user(&name)),
+                    Some(name) => create_link(name, url().user(name)),
                     _ => unreachable!()
                 })
             ]

@@ -137,7 +137,7 @@ pub fn get_move(model: &Model, sel: Piece, sq: Square, old_sq: Option<Square>) -
 
     if let (Ok(id), Ok(name)) = (id, name) {
         if model.game.as_ref().map_or(false, |game| {
-            game.players.iter().find(|_name| &&name == _name).is_some()
+            game.players.iter().any(|_name| &name == _name)
         }) {
             return Some(Move {
                 piece: sel,

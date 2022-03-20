@@ -64,7 +64,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 fn view(model: &Model) -> Node<Msg> {
     div![
-        component::navbar::view(&model),
+        component::navbar::view(model),
         div![
             C!("main"),
             match &model.page {
@@ -98,8 +98,7 @@ impl<'a> Urls<'a> {
         self.base_url().add_path_part("user").add_path_part(user)
     }
     pub fn game(self, game_id: &ObjectId) -> Url {
-        self.base_url()
-            .add_path_part(format!("game?q={}", game_id.to_string()))
+        self.base_url().add_path_part(format!("game?q={}", game_id))
     }
 }
 

@@ -46,7 +46,7 @@ fn challenge_from_bundle(bundle: Vec<CreateGameChallengeBundle>) -> Vec<CreateGa
             games.into_iter().map(move |game_id| CreateGameChallenge {
                 name: name.clone(),
                 _id: game_id,
-                creator: creator_id.clone(),
+                creator: creator_id,
             })
         })
         .collect()
@@ -147,7 +147,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 async fn get_all_games() -> fetch::Result<String> {
-    Request::new(format!("http://0.0.0.0:5000/game?q=all"))
+    Request::new("http://0.0.0.0:5000/game?q=all")
         .method(Method::Get)
         .fetch()
         .await?
@@ -171,8 +171,8 @@ where
 }
 
 fn challenge<Ms: 'static>(game: &CreateGameChallenge) -> Node<Ms> {
-    let creator = game.creator.clone();
-    let game = game._id.clone();
+    let creator = game.creator;
+    let game = game._id;
     button![
         C!("button accept-button"),
         "Accept",

@@ -42,13 +42,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     .perform_cmd(async move { Msg::Fetched(send_message(id).await) });
             }
             Err(_) => {
-                model.text = Some(Status::Error(format!("User not logged in")));
+                model.text = Some(Status::Error("User not logged in".into()));
             }
         },
         Msg::Fetched(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text) {
             Ok(resp) => match resp.status {
                 201 => {
-                    model.text = Some(Status::Success(format!("Game successfully created!")));
+                    model.text = Some(Status::Success("Game successfully created!".into()));
                 }
 
                 e => {
