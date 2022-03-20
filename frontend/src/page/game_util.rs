@@ -135,13 +135,12 @@ pub fn get_move(model: &Model, sel: Piece, sq: Square, old_sq: Option<Square>) -
     let id: Result<ObjectId, _> = LocalStorage::get("id");
     let name: Result<String, _> = LocalStorage::get("name");
 
-    if let (Ok(id), Ok(name)) = (id, name) {
-        if model.game.as_ref().map_or(false, |game| {
-            game.players.iter().any(|_name| &name == _name)
-        }) {
+    if let (Ok(id), Ok(name), Some(game)) = (id, name, model.game.as_ref()) {
+        if game.players.iter().any(|_name| &name == _name) {
             return Some(Move {
                 piece: sel,
                 player_id: id,
+                game_id: game._id,
                 old_sq,
                 sq,
             });

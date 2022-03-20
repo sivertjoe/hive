@@ -11,6 +11,7 @@ type Name = String;
 pub struct Move
 {
     pub player_id: ObjectId,
+    pub game_id:   ObjectId,
     pub piece:     Piece,
     pub sq:        Square,
     pub old_sq:    Option<Square>,
@@ -36,6 +37,7 @@ pub struct Game
 #[derive(Serialize, Deserialize)]
 pub struct GameResource
 {
+    pub _id:     ObjectId,
     pub players: [Name; 2],
     pub board:   Board,
 }
@@ -295,6 +297,12 @@ pub struct Board
 
 impl Board
 {
+    pub fn play_move(&mut self, r#move: Move)
+    {
+        // Have logic to check for legal move here
+        self.place_piece(r#move.piece, r#move.sq, r#move.old_sq);
+    }
+
     pub fn place_piece(&mut self, piece: Piece, sq: Square, old: Option<Square>)
     {
         self.board

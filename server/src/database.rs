@@ -277,7 +277,6 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
 }
 
 
-// @NOTE: What the fuck. Fix this ASAP. Something IS NOT RIGHT
 pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<GameResource>
 {
     let col = db.collection::<Game>(GAMES);
@@ -312,6 +311,21 @@ pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<GameRe
     .next()
     .await
     .ok_or(DatabaseError::NoDocumentFound)
+}
+
+pub async fn play_move(db: Database, r#move: Move) -> DatabaseResult<()>
+{
+    let col = db.collection::<Game>(GAMES);
+
+    let query = doc! {
+    "_id": r#move.game_id,
+    "players": { "$in": [&r#move.player_id] }};
+
+    let mut game =
+        col.find_one(query.clone(), None).await?.ok_or(DatabaseError::NoDocumentFound)?;
+    game.board.play_move(r#move);
+
+    col.replace_one(query, game, None).await.map(|_| ()).map_err(|e| e.into())
 }
 
 
@@ -630,6 +644,31 @@ mod test
         let (_, _, game_id) = create_users_and_game(&guard).await?;
 
         assert!(get_game_by_id(guard.db(), game_id).await.is_ok());
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_can_play_move() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+        let (u1, _, game_id) = create_users_and_game(&guard).await?;
+
+        let game = get_game_by_id(guard.db(), game_id).await?;
+
+        let mov = Move {
+            player_id: u1,
+            game_id:   game._id,
+            sq:        (0, 0, 0),
+            piece:     Piece::new(BoardPiece::Ant, Color::White),
+            old_sq:    None,
+        };
+
+        assert!(play_move(guard.db(), mov).await.is_ok());
+
+        let game = get_game_by_id(guard.db(), game_id).await?;
+        assert_eq!(game.board.board.len(), 1);
+        assert_eq!(game.board.turns, 1);
 
         Ok(())
     }

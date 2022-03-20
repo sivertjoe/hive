@@ -52,15 +52,17 @@ impl<'de> Visitor<'de> for Board
     where
         M: MapAccess<'de>,
     {
-        let mut board = Board {
-            turns: 0,
-            board: HashMap::with_capacity(access.size_hint().unwrap_or(0)),
-        };
+        let mut board = HashMap::with_capacity(access.size_hint().unwrap_or(0));
 
         while let Some((key, value)) = access.next_entry()?
         {
-            board.board.insert(deserialize_key(key), value);
+            board.insert(deserialize_key(key), value);
         }
+
+        let board = Board {
+            turns: board.len(),
+            board,
+        };
 
         Ok(board)
     }

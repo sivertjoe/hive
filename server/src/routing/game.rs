@@ -1,8 +1,9 @@
 use hyper::{Body, Method, Request, Response};
 use mongodb::{bson::oid::ObjectId, Client};
+use shared::model::Move;
 
-use super::{bad_request, error, method_not_allowed, ok};
-use crate::database::{get_active_games, get_game_by_id, LIVE};
+use super::{bad_request, error, get_body, method_not_allowed, ok};
+use crate::database::{get_active_games, get_game_by_id, play_move, LIVE};
 
 
 enum Query
@@ -57,7 +58,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
                     {
                         Ok(mut res) =>
                         {
-                            use shared::model::{BoardPiece, Color, Piece};
+                            /*use shared::model::{BoardPiece, Color, Piece};
                             res.board.place_piece(
                                 Piece::new(BoardPiece::Ant, Color::White),
                                 (0, 0, 0),
@@ -68,6 +69,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
                                 (-1, 0, 1),
                                 None,
                             );
+                            res.board.turns = 2;*/
 
                             Response::new(ok(res))
                         },
@@ -82,7 +84,19 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
             },
             _ => Response::new(bad_request()),
         },
-        Method::POST => Response::new(error(crate::database::DatabaseError::NoDocumentFound)),
+
+        Method::POST =>
+        {
+            /*
+            let r#move = get_body::<Move>(req).await.unwrap();
+            match play_move(client.database(LIVE), r#move).await
+            {
+                Ok(()) => Response::new(ok(())),
+                Err(e) => Response::new(error(e)),
+            }
+            */
+            Response::new(ok(()))
+        },
         _ => Response::new(method_not_allowed()),
     }
 }
