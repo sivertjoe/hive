@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 pub type Square = (isize, isize, isize);
 type Name = String;
@@ -47,7 +46,7 @@ impl Game
     {
         Self {
             players,
-            board: Board::new(),
+            board: Board::default(),
         }
     }
 }

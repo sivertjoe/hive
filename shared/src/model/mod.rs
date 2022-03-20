@@ -9,3 +9,5 @@ pub use create_game_form::*;
 
 pub mod game;
 pub use game::*;
+
+mod board_serialize;
