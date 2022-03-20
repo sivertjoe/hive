@@ -134,7 +134,7 @@ fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             }
             else
             {
-                Some(neighbors(s).into_iter().filter(|s| !board.board.contains_key(&s)))
+                Some(neighbors(s).into_iter().filter(|s| !board.board.contains_key(s)))
             }
         })
         .flatten()
@@ -150,8 +150,7 @@ fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
                 && (board.board.contains_key(square)
                     || neighbors(square)
                         .into_iter()
-                        .find(|_sq| *_sq != sq && board.board.contains_key(_sq))
-                        .is_some())
+                        .any(|_sq| _sq != sq && board.board.contains_key(&_sq)))
         };
 
         neighbors(&sq).into_iter().filter(have_neighbor).collect()
@@ -193,8 +192,7 @@ fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
     neighbors(&sq)
         .into_iter()
         .filter(|s| *s != me)
-        .find(|s| dbg!(board.board.contains_key(dbg!(s))))
-        .is_some()
+        .any(|s| board.board.contains_key(&s))
 }
 
 fn queen_move(board: &Board, sq: Square) -> Vec<Square>
@@ -229,7 +227,7 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
 {
     // Good neighbors have only same color neighbors or none
     let good_neighbors = |sq: &Square| {
-        neighbors(&sq).into_iter().all(|sq| match board.board.get(&sq)
+        neighbors(sq).into_iter().all(|sq| match board.board.get(&sq)
         {
             None => true,
             Some(s) => s.top().color == piece.color,
@@ -287,24 +285,16 @@ impl BoardSquare
 }
 
 
-#[serde_as]
-#[derive(Debug, Serialize, Deserialize)]
+// Manually derived trait in board_serialize.rs because of `Square` key
+#[derive(Debug, Default)]
 pub struct Board
 {
-    #[serde_as(as = "Vec<(_, _)>")]
     pub board: HashMap<Square, BoardSquare>,
     pub turns: usize,
 }
 
 impl Board
 {
-    fn new() -> Self
-    {
-        Self {
-            board: HashMap::new(), turns: 0
-        }
-    }
-
     pub fn place_piece(&mut self, piece: Piece, sq: Square, old: Option<Square>)
     {
         self.board
