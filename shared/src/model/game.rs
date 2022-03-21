@@ -288,9 +288,13 @@ impl BoardSquare
 
 
 // Manually derived trait in board_serialize.rs because of `Square` key
-#[derive(Debug, Default)]
+use serde_with::serde_as;
+
+#[serde_as]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Board
 {
+    #[serde_as(as = "Vec<(_, _)>")]
     pub board: HashMap<Square, BoardSquare>,
     pub turns: usize,
 }

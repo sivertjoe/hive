@@ -87,15 +87,14 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
 
         Method::POST =>
         {
-            /*
             let r#move = get_body::<Move>(req).await.unwrap();
             match play_move(client.database(LIVE), r#move).await
             {
                 Ok(()) => Response::new(ok(())),
                 Err(e) => Response::new(error(e)),
             }
-            */
-            Response::new(ok(()))
+
+            // Response::new(ok(()))
         },
         _ => Response::new(method_not_allowed()),
     }
