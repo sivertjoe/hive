@@ -220,18 +220,26 @@ fn _spider_move(
     let sq_add = |a: Square, b: Square| (a.0 + b.0, a.1 + b.1, a.2 + b.2);
 
     let common_neighbors = |a: Square, b: Square| {
-        let b = neighbors(&b);
-        neighbors(&a).into_iter().any(|a| b.contains(&a))
+        let actual_neighbors =
+            |s: Square| neighbors(&s).into_iter().filter(|s| board.board.contains_key(s));
+
+
+        // This is fine for now
+        let b = actual_neighbors(b).collect::<Vec<_>>();
+
+        actual_neighbors(a).into_iter().any(|a| b.contains(&a))
     };
 
     for &dir in &dirs
     {
         let dt = sq_add(sq, dir);
+        println!("square: {:?}", dt);
         if !visit.contains(&dt)
             && !board.board.contains_key(&dt)
             && square_has_neighbors(dt, board, origin)
             && common_neighbors(sq, dt)
         {
+            println!("continuing..");
             if level == 2 && !fin.contains(&dt)
             {
                 fin.push(dt);
@@ -241,6 +249,14 @@ fn _spider_move(
                 visit.push(sq);
                 _spider_move(fin, dirs, board, dt, level + 1, origin, visit.clone());
             }
+        }
+        else
+        {
+            println!("NOT");
+            dbg!(!visit.contains(&dt));
+            dbg!(!board.board.contains_key(&dt));
+            dbg!(square_has_neighbors(dt, board, origin));
+            dbg!(common_neighbors(sq, dt));
         }
     }
 }
@@ -722,7 +738,8 @@ mod test
 
         let mut legal_moves = legal_moves(&spider, &board, Some(spider_square));
         // let mut ans = vec![(1, -1, 0)];
-        let mut ans = vec![(2, 1, -3), (2, -1, -1), (-1, -3, 2), (-2, 2, 0)];
+        let mut ans = vec![(2, 1, -3), (2, -1, -1), (-1, -1, 2), (-2, 2, 0)];
+        //let mut ans = vec![(2, -1, -1), (2, 1, -3)];
 
         ans.sort();
         legal_moves.sort();
