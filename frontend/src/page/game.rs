@@ -11,7 +11,7 @@ pub struct Model {
     pub game: Option<GameResource>,
     pub gridv3: Vec<Hex>,
     pub piece: Option<SelectedPiece>,
-    pub menu: Vec<MenuItem>,
+    pub menu: Option<Vec<MenuItem>>,
     pub svg: ElRef<SvgGraphicsElement>,
     pub color: Option<Color>,
 
@@ -35,8 +35,8 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 
                 Some(Model {
                     game: None,
-                    gridv3: create_gridv3(3),
-                    menu: create_menu(),
+                    gridv3: create_gridv3(4),
+                    menu: None,
                     svg: ElRef::default(),
                     color: None,
                     piece: None,
@@ -86,9 +86,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FetchGame(res) => match parse_resp(res) {
             Ok(resp) => {
                 let game: GameResource = resp.get_body();
-
                 model.color = get_color(&game);
                 model.game = Some(game);
+                if let Some(color) = model.color {
+                    model.menu = Some(create_menu(color));
+                }
+                log(legal_turn(model));
+
                 grid_from_board(model);
             }
             Err(e) => {
@@ -157,15 +161,21 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Move(event) => {
             let mm = to_mouse_event(&event);
             let (x, y) = get_mouse_pos(model, mm);
+
+            let my_turn = legal_turn(model);
+            let correct_piece = legal_piece(model);
+
             if let Some(sel) = model.piece.as_mut() {
                 sel.x = x;
                 sel.y = y;
 
-                let piece = &sel.piece;
-                let board = &model.game.as_ref().unwrap().board;
+                if my_turn && correct_piece {
+                    let piece = &sel.piece;
+                    let board = &model.game.as_ref().unwrap().board;
 
-                let legal_moves = legal_moves(piece, board, Some(sel.old_square));
-                set_highlight(model, legal_moves, true);
+                    let legal_moves = legal_moves(piece, board, Some(sel.old_square));
+                    set_highlight(model, legal_moves, true);
+                }
             }
         }
 
@@ -198,9 +208,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         Msg::Drag(piece) => {
-            let board = get_board(model).unwrap();
-            let legal_moves = legal_moves(&piece, board, None);
-            set_highlight(model, legal_moves, true);
+            log(legal_turn(model));
+            if legal_turn(model) {
+                let board = get_board(model).unwrap();
+                let legal_moves = legal_moves(&piece, board, None);
+                log(&legal_moves);
+                set_highlight(model, legal_moves, true);
+            }
         }
 
         Msg::MouseUp(event) => {
@@ -292,7 +306,7 @@ impl MenuItem {
     }
 }
 
-fn create_menu() -> Vec<MenuItem> {
+fn create_menu(color: Color) -> Vec<MenuItem> {
     let deltas = |n: f32| (15. * n, 9. * n);
     let (_, dy) = deltas(0.5);
 
@@ -302,7 +316,6 @@ fn create_menu() -> Vec<MenuItem> {
 
 
     // Should be set to the players colors
-    let color = Color::White;
     let len = colors.len();
 
     colors
@@ -322,12 +335,23 @@ fn create_menu() -> Vec<MenuItem> {
 }
 
 fn piece_menu(model: &Model) -> Node<crate::Msg> {
-    div![
-        style! {
+    if model.menu.is_none() {
+        div![style! {
             St::Display => "flex",
-        },
-        model.menu.iter().map(MenuItem::to_menu_node)
-    ]
+        }]
+    } else {
+        div![
+            style! {
+                St::Display => "flex",
+            },
+            model
+                .menu
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(MenuItem::to_menu_node)
+        ]
+    }
 }
 
 async fn send_message(id: ObjectId) -> fetch::Result<String> {

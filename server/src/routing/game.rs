@@ -56,23 +56,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
                 {
                     match get_game_by_id(client.database(LIVE), object_id).await
                     {
-                        Ok(mut res) =>
-                        {
-                            /*use shared::model::{BoardPiece, Color, Piece};
-                            res.board.place_piece(
-                                Piece::new(BoardPiece::Ant, Color::White),
-                                (0, 0, 0),
-                                None,
-                            );
-                            res.board.place_piece(
-                                Piece::new(BoardPiece::Beetle, Color::Black),
-                                (-1, 0, 1),
-                                None,
-                            );
-                            res.board.turns = 2;*/
-
-                            Response::new(ok(res))
-                        },
+                        Ok(res) => Response::new(ok(res)),
 
                         Err(e) =>
                         {

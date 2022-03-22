@@ -169,3 +169,24 @@ pub fn grid_from_board(model: &mut Model) {
         }
     }
 }
+
+pub fn get_move_color(model: &Model) -> Option<Color> {
+    model.game.as_ref().map(|game| match game.board.turns % 2 {
+        0 => Color::White,
+        _ => Color::Black,
+    })
+}
+
+pub fn legal_turn(model: &Model) -> bool {
+    match (get_move_color(model), model.color) {
+        (Some(c1), Some(c2)) => c1 == c2,
+        _ => false,
+    }
+}
+
+pub fn legal_piece(model: &Model) -> bool {
+    match (model.piece.as_ref(), model.color) {
+        (Some(ref sel), Some(ref color)) => sel.piece.color == *color,
+        _ => false,
+    }
+}

@@ -363,7 +363,9 @@ pub struct Board
 {
     #[serde_as(as = "Vec<(_, _)>")]
     pub board: HashMap<Square, BoardSquare>,
-    pub turns: usize,
+
+    pub queens: [Option<Square>; 2],
+    pub turns:  usize,
 }
 
 impl Board
