@@ -98,19 +98,22 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         Msg::Click(event) => {
             let mm = to_mouse_event(&event);
-            if mm.button() == 0 {
-                let (x, y) = get_mouse_pos(model, mm);
-                let sq = pixel_to_hex(x as isize, y as isize);
+            if mm.button() != 0 {
+                return;
+            }
+            let (x, y) = get_mouse_pos(model, mm);
+            let sq = pixel_to_hex(x as isize, y as isize);
 
-                if let Some(hex) = get_piece_from_square_mut(model, sq) {
-                    let cl = hex.clone();
-                    hex.remove_top();
+            log(sq);
 
-                    let mut sel: SelectedPiece = cl.into();
-                    sel.x = x;
-                    sel.y = y;
-                    model.piece = Some(sel);
-                }
+            if let Some(hex) = get_piece_from_square_mut(model, sq) {
+                let cl = hex.clone();
+                hex.remove_top();
+
+                let mut sel: SelectedPiece = cl.into();
+                sel.x = x;
+                sel.y = y;
+                model.piece = Some(sel);
             }
             // clear_red(model);
         }
@@ -147,7 +150,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
 
                 clear_highlighs(model);
-                clear_red(model);
+                //clear_red(model);
             }
         }
 
@@ -215,7 +218,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             // should this not be 1?
             // https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons
             else if mm.button() == 0 {
-                clear_red(model);
+                //clear_red(model);
             }
         }
     }
