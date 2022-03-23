@@ -3,6 +3,7 @@ use shared::ObjectId;
 
 mod component;
 mod page;
+mod request;
 use page::Page;
 
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {

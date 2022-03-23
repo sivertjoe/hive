@@ -4,6 +4,8 @@ use shared::model::{http::*, UserCredentials};
 use crate::Msg::Login;
 use shared::ObjectId;
 
+use crate::request::user_cred::*;
+
 pub fn init(text: String, (end_point, success_code): (String, u32)) -> Model {
     Model {
         form: UserCredentials::default(),
@@ -34,17 +36,6 @@ pub enum Msg {
     Fetched(fetch::Result<String>),
 }
 
-async fn send_message(end_point: String, form: UserCredentials) -> fetch::Result<String> {
-    Request::new(format!("http://0.0.0.0:5000/{end_point}"))
-        .method(Method::Post)
-        .json(&form)?
-        .fetch()
-        .await?
-        .check_status()?
-        .text()
-        .await
-}
-
 pub fn update(
     msg: Msg,
     model: &mut Model,
@@ -55,9 +46,9 @@ pub fn update(
         Msg::Submit => {
             let form = model.form.clone();
             let end_point = model.end_point.clone();
-            orders
-                .skip()
-                .perform_cmd(async { to_msg(Msg::Fetched(send_message(end_point, form).await)) });
+            orders.skip().perform_cmd(async move {
+                to_msg(Msg::Fetched(send_message(&end_point, form).await))
+            });
         }
         Msg::NameChanged(name) => {
             model.form.name = name;

@@ -1,6 +1,7 @@
 use seed::{prelude::*, *};
-use shared::{model::http::*, ObjectId};
+use shared::model::http::*;
 
+use crate::request::create::*;
 use crate::Msg::CreateGame;
 
 pub fn init() -> Model {
@@ -22,24 +23,13 @@ enum Status {
     Error(String),
 }
 
-async fn send_message(creator: ObjectId) -> fetch::Result<String> {
-    Request::new("http://0.0.0.0:5000/create-game")
-        .method(Method::Post)
-        .json(&creator)?
-        .fetch()
-        .await?
-        .check_status()?
-        .text()
-        .await
-}
-
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Submit => match LocalStorage::get("id") {
             Ok(id) => {
                 orders
                     .skip()
-                    .perform_cmd(async move { Msg::Fetched(send_message(id).await) });
+                    .perform_cmd(async move { Msg::Fetched(send_create_request(id).await) });
             }
             Err(_) => {
                 model.text = Some(Status::Error("User not logged in".into()));

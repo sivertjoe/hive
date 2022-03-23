@@ -1,3 +1,4 @@
+use crate::request::game::*;
 use seed::{self, prelude::*, *};
 use shared::model::ResponseBody;
 use shared::{model::game::*, ObjectId};
@@ -30,7 +31,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
             Ok(id) => {
-                orders.perform_cmd(async move { Msg::FetchGame(send_message(id).await) });
+                orders.perform_cmd(async move { Msg::FetchGame(get_game(id).await) });
                 let size = gen_size(0.5);
 
                 Some(Model {
@@ -352,30 +353,6 @@ fn piece_menu(model: &Model) -> Node<crate::Msg> {
                 .map(MenuItem::to_menu_node)
         ]
     }
-}
-
-async fn send_message(id: ObjectId) -> fetch::Result<String> {
-    Request::new(format!("http://0.0.0.0:5000/game?q={id}"))
-        .method(Method::Get)
-        .fetch()
-        .await?
-        .check_status()?
-        .text()
-        .await
-}
-
-async fn send_move(r#move: Move) -> fetch::Result<String> {
-    Request::new(format!(
-        "http://0.0.0.0:5000/game?q={id}",
-        id = &r#move.player_id
-    ))
-    .method(Method::Post)
-    .json(&r#move)?
-    .fetch()
-    .await?
-    .check_status()?
-    .text()
-    .await
 }
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {

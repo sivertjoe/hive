@@ -1,5 +1,4 @@
 use seed::{prelude::*, *};
-use serde::Serialize;
 use shared::model::{
     CreateGameChallenge, CreateGameChallengeBundle, CreateGameFormResponse, OnGoingGame,
     ResponseBody,
@@ -12,6 +11,8 @@ pub struct Model {
     label: Option<String>,
     ongoing_games: Vec<OnGoingGame>,
 }
+
+use crate::request::home::*;
 
 pub fn init(orders: &mut impl Orders<Msg>) -> Model {
     orders
@@ -144,30 +145,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.label = Some(format!("error: {text:?}"));
         }
     }
-}
-
-async fn get_all_games() -> fetch::Result<String> {
-    Request::new("http://0.0.0.0:5000/game?q=all")
-        .method(Method::Get)
-        .fetch()
-        .await?
-        .check_status()?
-        .text()
-        .await
-}
-
-async fn send_message<T>(body: T, end_point: &str, method: Method) -> fetch::Result<String>
-where
-    T: Serialize,
-{
-    Request::new(format!("http://0.0.0.0:5000/{end_point}"))
-        .method(method)
-        .json(&body)?
-        .fetch()
-        .await?
-        .check_status()?
-        .text()
-        .await
 }
 
 fn challenge<Ms: 'static>(game: &CreateGameChallenge) -> Node<Ms> {
