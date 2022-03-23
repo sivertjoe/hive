@@ -2,7 +2,6 @@ use seed::prelude::*;
 
 pub mod create;
 pub mod game;
-mod game_util;
 pub mod home;
 pub mod login;
 pub mod register;
