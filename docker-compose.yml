@@ -12,10 +12,15 @@ services:
 
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.server
     ports:
-      - '50000:50000'
+      - '5000:5000'
+
+  website:
+    build:
+      dockerfile: Dockerfile.website
+    ports:
+      - '8000:8000'
 
 volumes:
   mongodb_data_container:

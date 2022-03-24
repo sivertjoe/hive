@@ -1,0 +1,9 @@
+FROM rust:1.59 as builder
+
+WORKDIR /
+COPY server server
+COPY shared shared
+WORKDIR server
+
+RUN cargo install --path .
+CMD server
