@@ -98,14 +98,22 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
     {
         log_req(&req);
     }
-    match req.uri().path()
+
+    if let Some(path) = req.uri().path().strip_prefix("/api/")
     {
-        "/register" => register(req, client).await,
-        "/login" => login(req, client).await,
-        "/create-game" => create_game(req, client).await,
-        "/home" => home(req, client).await,
-        "/game" => game(req, client).await,
-        _ => Response::new(not_found()),
+        match path
+        {
+            "register" => register(req, client).await,
+            "login" => login(req, client).await,
+            "create-game" => create_game(req, client).await,
+            "home" => home(req, client).await,
+            "game" => game(req, client).await,
+            _ => Response::new(not_found()),
+        }
+    }
+    else
+    {
+        Response::new(not_found())
     }
 }
 

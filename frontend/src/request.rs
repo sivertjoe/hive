@@ -9,8 +9,8 @@ const PORT: usize = 5000;
 const PROD_API_URL: &str = "hive.sivert.dev";
 
 const BASE_API_URL: &str = formatcp!(
-    "{}:{PORT}",
-    if cfg!(debug_assertions) {
+    "{HOST}:{PORT}/api",
+    HOST = if cfg!(debug_assertions) {
         "0.0.0.0"
     } else {
         PROD_API_URL
@@ -20,7 +20,3 @@ const BASE_API_URL: &str = formatcp!(
 fn url(end_point: &str) -> String {
     format!("{}/{}", BASE_API_URL, end_point)
 }
-
-/*fn url(end_point: &str) -> &str {
-    formatcp!("{PROD_API_URL}/{}", end_point)
-}*/

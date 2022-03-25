@@ -16,7 +16,6 @@ pub async fn send_message<T>(body: T, end_point: &str, method: Method) -> fetch:
 where
     T: Serialize,
 {
-    //Request::new(format!("http://0.0.0.0:5000/{end_point}"))
     Request::new(url(end_point))
         .method(method)
         .json(&body)?
