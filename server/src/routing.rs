@@ -70,7 +70,7 @@ impl<T> CorsExt for Response<T>
         let headers = self.headers_mut();
         headers.insert("Access-Control-Allow-Headers", "Content-Type".parse().unwrap());
         headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
-        headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT".parse().unwrap());
+        headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE".parse().unwrap());
         self
     }
 }

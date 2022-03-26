@@ -152,3 +152,11 @@ pub fn legal_piece(model: &Model) -> bool {
         _ => false,
     }
 }
+
+pub fn game_complete(model: &Model) -> bool {
+    model
+        .game
+        .as_ref()
+        .map(|game| game.is_complete())
+        .unwrap_or(false)
+}

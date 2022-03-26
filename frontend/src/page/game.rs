@@ -62,6 +62,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 pub enum Msg {
     FetchGame(fetch::Result<String>),
     SentMove(fetch::Result<String>),
+    CompleteGame(fetch::Result<String>),
 
     Move(Event),
     Click(Event),
@@ -91,6 +92,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 model.label = Some(format!("{e:?}"));
             }
         }
+        Msg::CompleteGame(resp) => {
+            if parse_resp(resp).is_ok() {
+                model.game.as_mut().unwrap().complete = true;
+            }
+        }
 
         Msg::FetchGame(res) => match parse_resp(res) {
             Ok(resp) => {
@@ -100,7 +106,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 if let Some(color) = model.color {
                     model.menu = Some(create_menu(color));
                 }
-                log(legal_turn(model));
 
                 grid_from_board(model);
             }
@@ -157,6 +162,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                         Some(selected_piece.old_square),
                     ) {
                         orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
+                    }
+
+                    if game_complete(model) {
+                        let id = model.game.as_ref().unwrap()._id;
+                        orders
+                            .perform_cmd(async move { Msg::CompleteGame(complete_game(id).await) });
                     }
                 } else {
                     place_piece_back(model, selected_piece);
@@ -217,7 +228,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         Msg::Drag(piece) => {
-            log(legal_turn(model));
             if legal_turn(model) {
                 let board = get_board(model).unwrap();
                 let legal_moves = legal_moves(&piece, board, None);

@@ -27,7 +27,10 @@ pub enum DatabaseError
     DbError(mongodb::error::Error),
     NoDocumentFound,
     TooManyGames,
+    GameNotComplete,
 }
+
+
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 
@@ -297,6 +300,7 @@ pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<GameRe
                 "$project": {
                     "players": "$players.name",
                     "board": "$board",
+                    "complete": "$complete",
                 }
             },
         ],
@@ -326,6 +330,18 @@ pub async fn play_move(db: Database, r#move: Move) -> DatabaseResult<()>
     game.board.play_move(r#move);
 
     col.replace_one(query, game, None).await.map(|_| ()).map_err(|e| e.into())
+}
+
+pub async fn complete_game(db: Database, game_id: ObjectId) -> DatabaseResult<()>
+{
+    let col = db.collection::<Game>(GAMES);
+    let filter = doc! { "_id": game_id };
+    let update = doc! { "$set": { "complete": true } };
+
+    col.find_one_and_update(filter, update, None)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.into())
 }
 
 

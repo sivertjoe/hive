@@ -3,7 +3,10 @@ use mongodb::{bson::oid::ObjectId, Client};
 use shared::model::Move;
 
 use super::{bad_request, error, get_body, method_not_allowed, ok};
-use crate::database::{get_active_games, get_game_by_id, play_move, LIVE};
+use crate::database::{
+    complete_game, get_active_games, get_game_by_id, play_move, DatabaseError::GameNotComplete,
+    LIVE,
+};
 
 
 enum Query
@@ -79,6 +82,28 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
             }
 
             // Response::new(ok(()))
+        },
+
+        Method::DELETE =>
+        {
+            let id = get_body::<ObjectId>(req).await.unwrap();
+
+            let db = client.database(LIVE);
+            let game = match get_game_by_id(db.clone(), id).await
+            {
+                Ok(game) => game,
+                Err(e) => return Response::new(error(e)),
+            };
+
+            if game.is_complete()
+            {
+                complete_game(db, id).await.unwrap();
+                Response::new(ok(()))
+            }
+            else
+            {
+                Response::new(error(GameNotComplete))
+            }
         },
         _ => Response::new(method_not_allowed()),
     }

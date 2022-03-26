@@ -229,13 +229,11 @@ fn _spider_move(
     for &dir in &dirs
     {
         let dt = sq_add(sq, dir);
-        println!("square: {:?}", dt);
         if !visit.contains(&dt)
             && !board.board.contains_key(&dt)
             && square_has_neighbors(dt, board, origin)
             && common_neighbors(sq, dt)
         {
-            println!("continuing..");
             if level == 2 && !fin.contains(&dt)
             {
                 fin.push(dt);
@@ -245,14 +243,6 @@ fn _spider_move(
                 visit.push(sq);
                 _spider_move(fin, dirs, board, dt, level + 1, origin, visit.clone());
             }
-        }
-        else
-        {
-            println!("NOT");
-            dbg!(!visit.contains(&dt));
-            dbg!(!board.board.contains_key(&dt));
-            dbg!(square_has_neighbors(dt, board, origin));
-            dbg!(common_neighbors(sq, dt));
         }
     }
 }
