@@ -220,14 +220,10 @@ fn _spider_move(
     let sq_add = |a: Square, b: Square| (a.0 + b.0, a.1 + b.1, a.2 + b.2);
 
     let common_neighbors = |a: Square, b: Square| {
-        let actual_neighbors =
-            |s: Square| neighbors(&s).into_iter().filter(|s| board.board.contains_key(s));
+        let an = neighbors(&a);
+        let bn = neighbors(&b);
 
-
-        // This is fine for now
-        let b = actual_neighbors(b).collect::<Vec<_>>();
-
-        actual_neighbors(a).into_iter().any(|a| b.contains(&a))
+        an.into_iter().any(|a| bn.contains(&a) && board.board.contains_key(&a))
     };
 
     for &dir in &dirs
@@ -541,7 +537,7 @@ mod test
 
 
         board.board = HashMap::from_iter(vec.into_iter());
-        board.turns = board.board.len();
+        board.turns = 8; // To avoid queen check
 
         let mut legal_moves = legal_moves(&beetle, &board, Some(beetle_square));
         let mut ans = neighbors(&beetle_square);
@@ -622,7 +618,7 @@ mod test
 
 
         board.board = HashMap::from_iter(pos.into_iter());
-        board.turns = board.board.len();
+        board.turns = 8; // To avoid queen check
 
         let mut legal_moves = legal_moves(&grass_hopper, &board, Some(grass_hopper_square));
         let mut ans = vec![(-2, 0, 2), (0, -2, 2), (2, -2, 0), (2, 0, -2), (0, 2, -2), (-2, 2, 0)];
