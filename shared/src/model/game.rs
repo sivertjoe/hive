@@ -30,6 +30,7 @@ pub struct OnGoingGame
 pub struct Game
 {
     players:   [ObjectId; 2],
+    complete:  bool,
     pub board: Board,
 }
 
@@ -37,9 +38,22 @@ pub struct Game
 #[derive(Serialize, Deserialize)]
 pub struct GameResource
 {
-    pub _id:     ObjectId,
-    pub players: [Name; 2],
-    pub board:   Board,
+    pub _id:      ObjectId,
+    pub players:  [Name; 2],
+    pub board:    Board,
+    pub complete: bool,
+}
+
+impl GameResource
+{
+    pub fn is_complete(&self) -> bool
+    {
+        self.board.queens.iter().any(|queen| match queen
+        {
+            Some(sq) => neighbors(sq).into_iter().all(|sq| self.board.board.contains_key(&sq)),
+            None => false,
+        })
+    }
 }
 
 impl Game
@@ -48,6 +62,7 @@ impl Game
     {
         Self {
             players,
+            complete: false,
             board: Board::default(),
         }
     }
@@ -80,26 +95,14 @@ impl Piece
     }
 }
 
-pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<Square>
+pub fn legal_moves(p: &Piece, game: &GameResource, board_pos: Option<Square>) -> Vec<Square>
 {
-    /*let search_stack = |next: &Stack| match next
+    if game.complete
     {
-        Some(bp) => bp.piece.r#type == BoardPiece::Queen && bp.piece.color == p.color,
-        None => false,
-    };
+        return Vec::new();
+    }
 
-    let contains_queen = || {
-        board
-            .board
-            .values()
-            .position(|bp| {
-                bp.piece.r#type == BoardPiece::Queen && bp.piece.color == p.color
-                    || search_stack(&bp.next)
-            })
-            .is_some()
-    };*/
-
-
+    let board = &game.board;
     match board.turns
     {
         // These first we _know_ and can be hardcoded
@@ -108,10 +111,17 @@ pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<S
 
         _ =>
         {
-            /*if (board.turns == 7 || board.turns == 8) && !contains_queen()
+            let idx = p.color as usize;
+
+            let queen_turn = board.turns == 6 || board.turns == 7;
+            let no_queen_placed = board.queens[idx].is_none();
+            let piece_not_queen = p.r#type != BoardPiece::Queen;
+
+            // A queen _has_ to be placed in the first four move of each player
+            if queen_turn && no_queen_placed && piece_not_queen
             {
-                todo!()
-            }*/
+                return Vec::new();
+            }
 
             match board_pos
             {
@@ -364,6 +374,12 @@ impl Board
 
     pub fn place_piece(&mut self, piece: Piece, sq: Square, old: Option<Square>)
     {
+        if piece.r#type == BoardPiece::Queen
+        {
+            let idx = piece.color as usize;
+            self.queens[idx] = Some(sq);
+        }
+
         self.board
             .entry(sq)
             .and_modify(|bs| bs.place_piece(piece))

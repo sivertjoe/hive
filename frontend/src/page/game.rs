@@ -191,9 +191,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
                 if my_turn && correct_piece {
                     let piece = &sel.piece;
-                    let board = &model.game.as_ref().unwrap().board;
+                    let game = model.game.as_ref().unwrap();
 
-                    let legal_moves = legal_moves(piece, board, Some(sel.old_square));
+                    let legal_moves = legal_moves(piece, game, Some(sel.old_square));
                     set_highlight(model, legal_moves, true);
                 }
             }
@@ -205,16 +205,10 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let sq = pixel_to_hex(x as isize, y as isize);
 
 
-            let r#type: BoardPiece = id.into();
-            // Todo fix
-            let color = if model.game.as_ref().unwrap().board.turns % 2 == 0 {
-                Color::White
-            } else {
-                Color::Black
-            };
-
-            let piece = Piece { r#type, color };
             if legal_move(model, sq) {
+                let r#type: BoardPiece = id.into();
+                let color = model.color.unwrap();
+                let piece = Piece { r#type, color };
                 place_piece(model, piece, sq);
                 if let Some(ref mut b) = get_board_mut(model) {
                     b.place_piece(piece, sq, None);
@@ -222,16 +216,21 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 if let Some(r#move) = get_move(model, piece, sq, None) {
                     orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                 }
+
+                if game_complete(model) {
+                    let id = model.game.as_ref().unwrap()._id;
+                    orders.perform_cmd(async move { Msg::CompleteGame(complete_game(id).await) });
+                }
             }
 
             clear_highlighs(model);
         }
 
         Msg::Drag(piece) => {
+            clear_highlighs(model);
             if legal_turn(model) {
-                let board = get_board(model).unwrap();
-                let legal_moves = legal_moves(&piece, board, None);
-                log(&legal_moves);
+                let game = model.game.as_ref().unwrap();
+                let legal_moves = legal_moves(&piece, game, None);
                 set_highlight(model, legal_moves, true);
             }
         }
