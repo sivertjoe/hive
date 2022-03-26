@@ -17,12 +17,11 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 pub async fn main() -> Result<(), Error>
 {
     let client = connect().await?;
-    /*client
-    .database("live")
-    .collection::<shared::model::Game>("games")
-    .drop(None)
-    .await
-    .unwrap();*/
+    if false
+    {
+        client.database("live").drop(None).await.unwrap();
+        println!("DROPPING");
+    }
 
     let make_svc = make_service_fn(|_| {
         let client = client.clone();
