@@ -133,6 +133,8 @@ pub fn legal_moves(p: &Piece, game: &GameResource, board_pos: Option<Square>) ->
 }
 
 
+// Instead of doing _this_ ant scheme, what about doing the spiderwalk?
+// and checking if I can fit? How do I know when Im done though?
 fn ant_move(board: &Board, sq: Square) -> Vec<Square>
 {
     board
