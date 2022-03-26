@@ -11,6 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build the stack
-        run: docker-compose build --parallel website server db
+        run: docker-compose build --parallel
       - name: Bring up
-        run: docker-compose up -d website server db
+        run: docker-compose up -d

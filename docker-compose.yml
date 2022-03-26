@@ -12,12 +12,14 @@ services:
 
   server:
     build:
+      context: .
       dockerfile: Dockerfile.server
     ports:
       - '5000:5000'
 
   website:
     build:
+      context: .
       dockerfile: Dockerfile.website
     ports:
       - '8000:8000'

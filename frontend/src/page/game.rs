@@ -44,7 +44,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 
                 Some(Model {
                     game: None,
-                    gridv3: create_gridv3(4),
+                    gridv3: create_gridv3(5),
                     menu: None,
                     svg: ElRef::default(),
                     color: None,
