@@ -6,7 +6,7 @@ pub mod user_cred;
 use const_format::formatcp;
 
 const PORT: usize = 5000;
-const PROD_API_URL: &str = "hive.sivert.dev";
+const PROD_API_URL: &str = "https://hive.sivert.dev";
 
 const BASE_API_URL: &str = formatcp!(
     "{HOST}:{PORT}/api",
