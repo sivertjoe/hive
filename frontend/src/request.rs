@@ -11,7 +11,7 @@ const PROD_API_URL: &str = "hive.sivert.dev";
 const BASE_API_URL: &str = formatcp!(
     "{HOST}:{PORT}/api",
     HOST = if cfg!(debug_assertions) {
-        "0.0.0.0"
+        "http://0.0.0.0"
     } else {
         PROD_API_URL
     }
