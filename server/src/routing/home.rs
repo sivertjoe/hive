@@ -16,7 +16,7 @@ pub async fn home(req: Request<Body>, client: Client) -> Response<Body>
 
             match database::home(client.database(LIVE), uuid).await
             {
-                Ok(uuid) => Response::new(ok(uuid)),
+                Ok(bundle) => Response::new(ok(bundle)),
                 Err(e) => Response::new(error(e)),
             }
         },
