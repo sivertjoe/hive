@@ -1,4 +1,4 @@
-use crate::model::game::*;
+use crate::model::*;
 
 mod ant;
 use ant::*;
