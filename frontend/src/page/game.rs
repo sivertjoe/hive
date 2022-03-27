@@ -18,9 +18,10 @@ pub struct Model {
     pub game: Option<GameResource>,
     pub gridv3: Vec<Hex>,
     pub piece: Option<SelectedPiece>,
-    pub menu: Option<Vec<MenuItem>>,
     pub svg: ElRef<SvgGraphicsElement>,
     pub color: Option<Color>,
+
+    pub menu: Option<Menu>,
 
     pub size: String,
     pub label: Option<String>,
@@ -102,7 +103,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 model.color = get_color(&game);
                 model.game = Some(game);
                 if let Some(color) = model.color {
-                    model.menu = Some(create_menu(color));
+                    use BoardPiece::*;
+                    let items = [Ant, Beetle, Grasshopper, Spider, Queen]
+                        .into_iter()
+                        .map(|r#type| Piece { color, r#type });
+
+                    let board = get_board(model).unwrap();
+                    model.menu = Some(Menu::new(items, board));
                 }
 
                 grid_from_board(model);
@@ -208,9 +215,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let color = model.color.unwrap();
                 let piece = Piece { r#type, color };
                 place_piece(model, piece, sq);
+
+                model.menu.as_mut().unwrap().reduce_piece(r#type);
+
                 if let Some(ref mut b) = get_board_mut(model) {
                     b.place_piece(piece, sq, None);
                 }
+
                 if let Some(r#move) = get_move(model, piece, sq, None) {
                     orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                 }
@@ -258,34 +269,14 @@ pub fn view(model: &Model) -> Node<crate::Msg> {
     div![div![
         C!("container"),
         grid(model),
-        IF!(model.color.is_some() =>
-            div![C!("piece-menu"), piece_menu(model)]
-        ),
+        IF!(model.menu.is_some() => {
+            div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
+        }),
         IF!(model.label.is_some() => match model.label {
             Some(ref s) => h2! [C!("error"), s],
             _ => unreachable!()
         })
     ]]
-}
-
-fn piece_menu(model: &Model) -> Node<crate::Msg> {
-    if model.menu.is_none() {
-        div![style! {
-            St::Display => "flex",
-        }]
-    } else {
-        div![
-            style! {
-                St::Display => "flex",
-            },
-            model
-                .menu
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(MenuItem::to_menu_node)
-        ]
-    }
 }
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
