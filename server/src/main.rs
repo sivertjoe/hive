@@ -1,5 +1,4 @@
-mod user;
-
+mod model;
 mod routing;
 use routing::handle;
 mod database;

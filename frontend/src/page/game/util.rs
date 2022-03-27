@@ -157,6 +157,6 @@ pub fn game_complete(model: &Model) -> bool {
     model
         .game
         .as_ref()
-        .map(|game| game.is_complete())
+        .map(|game| game.board.is_complete())
         .unwrap_or(false)
 }
