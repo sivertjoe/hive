@@ -1,7 +1,7 @@
 use super::*;
 use crate::page::game::*;
 use seed::{self, prelude::*};
-use shared::{model::game::*, ObjectId};
+use shared::{model::*, ObjectId};
 use web_sys::MouseEvent;
 
 pub fn get_board_mut(model: &mut Model) -> Option<&mut Board> {

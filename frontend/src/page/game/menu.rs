@@ -1,7 +1,7 @@
 use super::util::*;
 use super::Msg;
 use seed::{self, prelude::*, *};
-use shared::model::game::*;
+use shared::model::*;
 
 pub struct MenuItem {
     x: f32,

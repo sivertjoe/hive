@@ -10,11 +10,8 @@ use util::*;
 
 use crate::request::game::*;
 use seed::{self, prelude::*, *};
-use shared::model::ResponseBody;
-use shared::r#move::*;
-use shared::{model::game::*, ObjectId};
-use web_sys::Event;
-use web_sys::SvgGraphicsElement;
+use shared::{model::*, r#move::*, ObjectId};
+use web_sys::{Event, SvgGraphicsElement};
 
 #[derive(Default)]
 pub struct Model {
