@@ -95,7 +95,7 @@ pub async fn game(req: Request<Body>, client: Client) -> Response<Body>
                 Err(e) => return Response::new(error(e)),
             };
 
-            if game.is_complete()
+            if game.board.is_complete()
             {
                 complete_game(db, id).await.unwrap();
                 Response::new(ok(()))

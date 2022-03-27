@@ -11,6 +11,7 @@ use util::*;
 use crate::request::game::*;
 use seed::{self, prelude::*, *};
 use shared::model::ResponseBody;
+use shared::r#move::*;
 use shared::{model::game::*, ObjectId};
 use web_sys::Event;
 use web_sys::SvgGraphicsElement;
@@ -93,8 +94,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
         Msg::CompleteGame(resp) => {
-            if parse_resp(resp).is_ok() {
-                model.game.as_mut().unwrap().complete = true;
+            if let Err(e) = parse_resp(resp) {
+                model.label = Some(format!("{e:?}"));
             }
         }
 
@@ -191,9 +192,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
                 if my_turn && correct_piece {
                     let piece = &sel.piece;
-                    let game = model.game.as_ref().unwrap();
+                    let board = &model.game.as_ref().unwrap().board;
 
-                    let legal_moves = legal_moves(piece, game, Some(sel.old_square));
+                    let legal_moves = legal_moves(piece, board, Some(sel.old_square));
                     set_highlight(model, legal_moves, true);
                 }
             }
@@ -229,8 +230,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Drag(piece) => {
             clear_highlighs(model);
             if legal_turn(model) {
-                let game = model.game.as_ref().unwrap();
-                let legal_moves = legal_moves(&piece, game, None);
+                let board = &model.game.as_ref().unwrap().board;
+                let legal_moves = legal_moves(&piece, board, None);
                 set_highlight(model, legal_moves, true);
             }
         }

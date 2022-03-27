@@ -7,7 +7,7 @@ use mongodb::{
 };
 use shared::model::*;
 
-use crate::user::User;
+use crate::model::{game::Game, user::User};
 
 
 pub const LIVE: &str = "live";
