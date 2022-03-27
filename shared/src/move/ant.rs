@@ -18,7 +18,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
     let org = sq;
     let mut current = sq;
 
-    let mut res = Vec::new();
+    let mut res = Vec::with_capacity(board.board.len() * 2);
 
     loop
     {
@@ -35,9 +35,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             let follows_path =
                 square_has_neighbors(sq, board, org) && common_neighbors(current, sq);
 
-            let can_fit = { can_fit(current, sq, board) };
-
-            if not_prev_pos && empty_square && follows_path && can_fit
+            if not_prev_pos && empty_square && follows_path && can_fit(current, sq, board)
             {
                 next = Some(sq);
                 current = sq;
@@ -60,44 +58,11 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             },
             None =>
             {
-                panic!("what occurs here?");
+                return res;
             },
         }
     }
 }
-
-// Instead of doing _this_ ant scheme, what about doing the spiderwalk?
-// and checking if I can fit? How do I know when Im done though?
-pub fn _ant_move(board: &Board, sq: Square) -> Vec<Square>
-{
-    let iter = board
-        .board
-        .iter()
-        .filter_map(|(s, _p)| {
-            // skip myself
-            if *s == sq
-            {
-                None
-            }
-            else
-            {
-                Some(neighbors(s).into_iter().filter(|s| !board.board.contains_key(s)))
-            }
-        })
-        .flatten();
-
-    let mut vec = Vec::new();
-
-    for sq in iter
-    {
-        if !vec.contains(&sq)
-        {
-            vec.push(sq);
-        }
-    }
-    vec
-}
-
 
 fn can_fit(current: Square, next: Square, board: &Board) -> bool
 {
@@ -136,7 +101,10 @@ fn can_fit(current: Square, next: Square, board: &Board) -> bool
             let b = (max_n(0), max_n(1), b - 1);
             (a, b)
         },
-        _ => unreachable!(),
+        _ =>
+        {
+            return true;
+        },
     };
 
     !occupied(a, b)
@@ -213,12 +181,6 @@ mod test
         board.turns = 3; // To avoid queen check
 
         let mut legal_moves = ant_move(&board, ant_square);
-        // (-1, 0, 1), (1, -1, 0)
-
-        // [(-1, -1, 2), (-1, 0, 1), (-1, 1, 0), (0, -2, 2), (0, 1, -1), (1, -2, 1), (1,
-        // -1, 0)]
-        // [(-1, -1, 2), (-1, 0, 1), (-1, 1, 0), (0, -2, 2), (0, 1, -1), (1, -2, 1), (1,
-        // -1, 0)]
 
         let mut ans = vec![
             (1, -1, 0),

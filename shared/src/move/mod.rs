@@ -124,8 +124,6 @@ pub fn neighbors(sq: &Square) -> [Square; 6]
 #[cfg(test)]
 mod test
 {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
