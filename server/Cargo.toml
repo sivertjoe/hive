@@ -18,6 +18,8 @@ uuid = { version = "0.8", features = ["v4"] }
 sha2 = "0.9.2"
 chrono = "0.4"
 getrandom = "0.2.5"
+tokio-tungstenite = "0.17.1"
+tungstenite = "0.17.2"
 
 
 shared = { path = "../shared" }

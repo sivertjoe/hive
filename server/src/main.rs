@@ -1,5 +1,6 @@
 mod model;
 mod routing;
+mod websocket;
 use routing::handle;
 mod database;
 use std::convert::Infallible;
@@ -9,11 +10,14 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Server,
 };
+use websocket::*;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
+
+type SError = Box<dyn std::error::Error + Send + Sync>;
+
 
 #[tokio::main]
-pub async fn main() -> Result<(), Error>
+pub async fn main() -> Result<(), SError>
 {
     let client = connect().await?;
     if false
@@ -35,8 +39,14 @@ pub async fn main() -> Result<(), Error>
     let addr = ([0, 0, 0, 0], 5000).into();
     let server = Server::bind(&addr).serve(make_svc);
 
-    println!("Listening on http://{}", addr);
 
+    // Use `tx` to communicate when a move has occured!
+    let (tx, rx) = tokio::sync::mpsc::channel(10); // 10 good??
+
+
+    tokio::spawn(spawn_web_socket_server(rx));
+
+    println!("Listening on http://{}", addr);
     server.await?;
 
     Ok(())
