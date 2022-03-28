@@ -7,7 +7,7 @@ pub type Square = (isize, isize, isize);
 type Name = String;
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Move
 {
     pub player_id: ObjectId,

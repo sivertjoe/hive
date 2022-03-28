@@ -9,6 +9,7 @@ use selected_piece::*;
 use util::*;
 
 use crate::request::game::*;
+use crate::request::ws_url;
 use seed::{self, prelude::*, *};
 use shared::{model::*, r#move::*, ObjectId};
 use web_sys::{Event, SvgGraphicsElement};
@@ -25,6 +26,8 @@ pub struct Model {
 
     pub size: String,
     pub label: Option<String>,
+
+    pub socket: Option<WebSocket>,
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
@@ -41,6 +44,13 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                 orders.perform_cmd(async move { Msg::FetchGame(get_game(id).await) });
                 let size = gen_size(0.5);
 
+                let socket = WebSocket::builder(ws_url(id.clone()), orders)
+                    .on_message(Msg::MessageReceived)
+                    .on_open(|| Msg::Open)
+                    .on_close(|_| Msg::Close)
+                    .build_and_open()
+                    .ok();
+
                 Some(Model {
                     game: None,
                     gridv3: create_gridv3(5),
@@ -50,6 +60,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     piece: None,
                     size,
                     label: None,
+                    socket,
                 })
             }
             _ => None,
@@ -62,6 +73,10 @@ pub enum Msg {
     FetchGame(fetch::Result<String>),
     SentMove(fetch::Result<String>),
     CompleteGame(fetch::Result<String>),
+
+    Open,
+    Close,
+    MessageReceived(WebSocketMessage),
 
     Move(Event),
     Click(Event),
@@ -85,7 +100,18 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             })
     };
+
     match msg {
+        Msg::Open => {
+            log("OPEN");
+        }
+        Msg::Close => {
+            log("CLOSE");
+        }
+        Msg::MessageReceived(_) => {
+            log("RECEIVE");
+        }
+
         Msg::SentMove(resp) => {
             if let Err(e) = parse_resp(resp) {
                 model.label = Some(format!("{e:?}"));
