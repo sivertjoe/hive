@@ -78,8 +78,8 @@ fn can_fit(current: Square, next: Square, board: &Board) -> bool
     }
     let max_n = |n: usize| cmp(current, next, n, std::cmp::max);
     let min_n = |n: usize| cmp(current, next, n, std::cmp::min);
-
     let occupied = |a, b| board.board.contains_key(&a) && board.board.contains_key(&b);
+
 
     let (a, b) = match (current, next)
     {
@@ -101,10 +101,7 @@ fn can_fit(current: Square, next: Square, board: &Board) -> bool
             let b = (max_n(0), max_n(1), b - 1);
             (a, b)
         },
-        _ =>
-        {
-            return true;
-        },
+        _ => unreachable!(),
     };
 
     !occupied(a, b)
