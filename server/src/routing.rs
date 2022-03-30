@@ -12,9 +12,10 @@ use create_game::create_game;
 use game::game;
 use home::home;
 use login::login;
-use mongodb::Client;
 use register::register;
 use serde::Serialize;
+
+use crate::State;
 
 
 fn _body<T>(body: T) -> String
@@ -92,7 +93,7 @@ fn log_req(req: &Request<Body>)
     println!("[{now}]\t{method}\t{url}");
 }
 
-async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
+async fn handle_request(req: Request<Body>, state: State) -> Response<Body>
 {
     if cfg!(debug_assertions)
     {
@@ -103,11 +104,11 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
     {
         match path
         {
-            "register" => register(req, client).await,
-            "login" => login(req, client).await,
-            "create-game" => create_game(req, client).await,
-            "home" => home(req, client).await,
-            "game" => game(req, client).await,
+            "register" => register(req, state).await,
+            "login" => login(req, state).await,
+            "create-game" => create_game(req, state).await,
+            "home" => home(req, state).await,
+            "game" => game(req, state).await,
             _ => Response::new(not_found()),
         }
     }
@@ -117,12 +118,12 @@ async fn handle_request(req: Request<Body>, client: Client) -> Response<Body>
     }
 }
 
-pub async fn handle(req: Request<Body>, client: Client) -> Result<Response<Body>, Infallible>
+pub async fn handle(req: Request<Body>, state: State) -> Result<Response<Body>, Infallible>
 {
     Ok(match *req.method()
     {
         Method::OPTIONS => Response::new(Body::default()),
-        _ => handle_request(req, client).await,
+        _ => handle_request(req, state).await,
     }
     .add_cors_headers())
 }

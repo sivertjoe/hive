@@ -5,7 +5,6 @@ use routing::handle;
 mod database;
 use std::convert::Infallible;
 
-use database::*;
 use hyper::{
     service::{make_service_fn, service_fn},
     Server,
@@ -15,39 +14,59 @@ use websocket::*;
 
 type SError = Box<dyn std::error::Error + Send + Sync>;
 
+use tokio::sync::mpsc;
+use websocket::Message;
 
-#[tokio::main]
-pub async fn main() -> Result<(), SError>
+#[derive(Clone)]
+pub struct State
 {
-    let client = connect().await?;
-    if false
-    {
-        client.database("live").drop(None).await.unwrap();
-        println!("DROPPING");
-    }
+    pub client: mongodb::Client,
+    pub tx:     mpsc::Sender<Message>,
+}
 
+impl State
+{
+    pub fn db(&self) -> mongodb::Database
+    {
+        self.client.database(database::LIVE)
+    }
+}
+
+
+async fn spawn_http_server(state: State) -> Result<(), SError>
+{
     let make_svc = make_service_fn(|_| {
-        let client = client.clone();
+        let state = state.clone();
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
-                let client = client.clone();
-                async move { handle(req, client).await }
+                let state = state.clone();
+                async move { handle(req, state).await }
             }))
         }
     });
 
     let addr = ([0, 0, 0, 0], 5000).into();
     let server = Server::bind(&addr).serve(make_svc);
+    println!("Listening on http://{}", addr);
+    server.await?;
+    Ok(())
+}
 
 
-    // Use `tx` to communicate when a move has occured!
+#[tokio::main]
+pub async fn main() -> Result<(), SError>
+{
+    let client = database::connect().await?;
     let (tx, rx) = tokio::sync::mpsc::channel(10); // 10 good??
+
+    let state = State {
+        client,
+        tx,
+    };
 
 
     tokio::spawn(spawn_web_socket_server(rx));
-
-    println!("Listening on http://{}", addr);
-    server.await?;
+    spawn_http_server(state).await;
 
     Ok(())
 }

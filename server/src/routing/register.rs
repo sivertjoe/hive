@@ -1,11 +1,10 @@
 use hyper::{Body, Method, Request, Response};
-use mongodb::Client;
 use shared::model::UserCredentials;
 
 use super::{create, error, get_body, method_not_allowed};
-use crate::database::{register_user, LIVE};
+use crate::{database::register_user, State};
 
-pub async fn register(req: Request<Body>, client: Client) -> Response<Body>
+pub async fn register(req: Request<Body>, state: State) -> Response<Body>
 {
     match *req.method()
     {
@@ -13,7 +12,7 @@ pub async fn register(req: Request<Body>, client: Client) -> Response<Body>
         {
             let cred = get_body::<UserCredentials>(req).await.unwrap();
 
-            match register_user(client.database(LIVE), cred).await
+            match register_user(state.db(), cred).await
             {
                 Ok(uuid) => Response::new(create(uuid)),
                 Err(e) => Response::new(error(e)),
