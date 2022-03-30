@@ -1,11 +1,10 @@
 use hyper::{Body, Method, Request, Response};
-use mongodb::Client;
 use shared::model::UserCredentials;
 
 use super::{error, get_body, method_not_allowed, ok};
-use crate::database::{self, LIVE};
+use crate::{database, State};
 
-pub async fn login(req: Request<Body>, client: Client) -> Response<Body>
+pub async fn login(req: Request<Body>, state: State) -> Response<Body>
 {
     match *req.method()
     {
@@ -13,7 +12,7 @@ pub async fn login(req: Request<Body>, client: Client) -> Response<Body>
         {
             let cred = get_body::<UserCredentials>(req).await.unwrap();
 
-            match database::login(client.database(LIVE), cred).await
+            match database::login(state.db(), cred).await
             {
                 Ok(uuid) => Response::new(ok(uuid)),
                 Err(e) => Response::new(error(e)),

@@ -10,8 +10,8 @@ use tungstenite::{handshake::server::Request, Result};
 
 pub struct Message
 {
-    game_id: ObjectId,
-    r#move:  Move,
+    pub game_id: ObjectId,
+    pub r#move:  Move,
 }
 
 use std::collections::HashMap;
@@ -37,6 +37,7 @@ impl State
 
     fn add_sender(&mut self, id: ObjectId, sender: mpsc::Sender<Move>)
     {
+        // TODO: Retain socket with closed connections
         self.map.entry(id).or_default().push(sender);
     }
 }
@@ -91,16 +92,40 @@ pub async fn spawn_web_socket_server(mut rx: mpsc::Receiver<Message>)
     }
 }
 
-async fn handle_connection(_ws: WebSocketStream<TcpStream>, mut rx: mpsc::Receiver<Move>)
+async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Receiver<Move>)
 {
+    use futures::stream::StreamExt;
+    println!("ENTER");
+
+    use tungstenite::{Error::ConnectionClosed, Message::Close};
+
     loop
     {
-        println!("DONE");
-        if let Some(_move) = rx.recv().await
-        {
-            // send move
+        select! {
+            res = ws.next() =>
+            {
+                if let Some(msg) = res
+                {
+                    match msg
+                    {
+                        Ok(Close(_)) | Err(ConnectionClosed) => {
+                            break;
+                        }
+                        e => panic!("{:?}", e),
+                    }
+                }
+
+            }
+
+            msg = rx.recv() => {
+                if let Some(_move) = msg
+                {
+                    // send move
+                }
+            }
         }
     }
+    println!("DROPEED");
 }
 
 

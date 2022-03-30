@@ -1,10 +1,10 @@
 use hyper::{Body, Method, Request, Response};
-use mongodb::{bson::oid::ObjectId, Client};
+use mongodb::bson::oid::ObjectId;
 
 use super::{error, get_body, method_not_allowed, ok};
-use crate::database::{self, LIVE};
+use crate::{database, State};
 
-pub async fn home(req: Request<Body>, client: Client) -> Response<Body>
+pub async fn home(req: Request<Body>, state: State) -> Response<Body>
 {
     match *req.method()
     {
@@ -14,7 +14,7 @@ pub async fn home(req: Request<Body>, client: Client) -> Response<Body>
             // user was not logged in
             let uuid = get_body::<ObjectId>(req).await.unwrap_or_else(ObjectId::new);
 
-            match database::home(client.database(LIVE), uuid).await
+            match database::home(state.db(), uuid).await
             {
                 Ok(bundle) => Response::new(ok(bundle)),
                 Err(e) => Response::new(error(e)),
