@@ -6,8 +6,35 @@ This is a personal project for an online hive server. Think chess.com, only for 
 Hive is a board game where the objective of the game is to place down bugs :bug: in order to surround the enemy queen bee piece :honeybee:
 
 ## How to run
+### In production
 You can use docker :whale:!
+However, you probably want to change some URLs in the project to your domain.
+See `frontend/src/request.rs`.
+If you need to change the port, you need to change it in the `docker-compose` file as well as in the code.
 
+### Locally
+#### Server
+```bash
+cargo run
+```
+
+#### Frontend
+Dependencies:
+* wasm-pack
+* cargo-make
+
+All can be installed with `cargo install <dep>`
+
+To make and serve the frontend you use cargo make:
+```bash
+cargo make watch  # Wathces and builds the frontend
+cargo make serve # Serve the built project
+```
+
+#### Database
+```bash
+docker-compose up db
+```
 
 ## Tech stack
 
