@@ -5,7 +5,7 @@ use serde_with::serde_as;
 
 use crate::model::*;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoardSquare
 {
     pub pieces: Vec<Piece>,
@@ -25,9 +25,9 @@ impl BoardSquare
         self.pieces.push(piece);
     }
 
-    pub fn remove_piece(&mut self)
+    pub fn remove_piece(&mut self) -> Option<Piece>
     {
-        self.pieces.pop();
+        self.pieces.pop()
     }
 
     pub fn top(&self) -> &Piece
@@ -37,7 +37,7 @@ impl BoardSquare
 }
 
 #[serde_as]
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Board
 {
     #[serde_as(as = "Vec<(_, _)>")]
@@ -53,6 +53,21 @@ impl Board
     {
         // Have logic to check for legal move here
         self.place_piece(r#move.piece, r#move.sq, r#move.old_sq);
+    }
+
+    pub fn play_from_to(&mut self, from: Square, to: Square)
+    {
+        let bs = self.board.get_mut(&from).unwrap();
+        let old = bs.remove_piece().unwrap();
+        if bs.pieces.is_empty()
+        {
+            self.board.remove(&from).unwrap();
+        }
+
+        self.board
+            .entry(to)
+            .and_modify(|bs| bs.place_piece(old))
+            .or_insert_with(|| BoardSquare::new(old));
     }
 
     pub fn place_piece(&mut self, piece: Piece, sq: Square, old: Option<Square>)
