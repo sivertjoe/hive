@@ -41,9 +41,19 @@ async fn get(req: Request<Body>, state: State) -> Response<Body>
 async fn post(req: Request<Body>, state: State) -> Response<Body>
 {
     let r#move = get_body::<Move>(req).await.unwrap();
-    match play_move(state.db(), r#move).await
+    match play_move(state.db(), r#move.clone()).await
     {
-        Ok(()) => Response::new(ok(())),
+        Ok(()) =>
+        {
+            let msg = crate::websocket::Message {
+                r#move,
+            };
+            match state.tx.send(msg).await
+            {
+                Ok(_) => Response::new(ok(())),
+                _ => panic!("websocket server is dead"),
+            }
+        },
         Err(e) => Response::new(error(e)),
     }
 }

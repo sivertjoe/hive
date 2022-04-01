@@ -18,7 +18,17 @@ pub fn get_hex_from_square(model: &mut Model, sq: Square) -> Option<&mut Hex> {
 pub fn place_piece(model: &mut Model, piece: Piece, sq: Square) {
     if let Some(hex) = get_hex_from_square(model, sq) {
         hex.place_piece(piece);
+        model.game.as_mut().unwrap().board.turns += 1;
     }
+}
+
+pub fn play_move(model: &mut Model, r#move: Move) {
+    if let Some(old) = r#move.old_sq {
+        if let Some(hex) = get_hex_from_square(model, old) {
+            hex.remove_top();
+        }
+    }
+    place_piece(model, r#move.piece, r#move.sq);
 }
 
 pub fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
@@ -158,5 +168,13 @@ pub fn game_complete(model: &Model) -> bool {
         .game
         .as_ref()
         .map(|game| game.board.is_complete())
+        .unwrap_or(false)
+}
+
+pub fn just_my_move(model: &Model, r#move: &Move) -> bool {
+    model
+        .color
+        .as_ref()
+        .map(|color| *color == r#move.piece.color)
         .unwrap_or(false)
 }

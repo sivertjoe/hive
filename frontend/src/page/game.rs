@@ -108,8 +108,15 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Close => {
             log("CLOSE");
         }
-        Msg::MessageReceived(_) => {
-            log("RECEIVE");
+        Msg::MessageReceived(msg) => {
+            // No need to play the move if we just played it.
+            if let Ok(r#move) = msg.json::<Move>() {
+                if !just_my_move(model, &r#move) {
+                    play_move(model, r#move);
+                }
+            } else {
+                log("oh");
+            }
         }
 
         Msg::SentMove(resp) => {
