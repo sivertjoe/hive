@@ -5,7 +5,7 @@ use crate::{
 
 pub fn queen_move(board: &Board, sq: Square) -> Vec<Square>
 {
-    let is_vakant = |sq: Square| !board.contains_key(&sq);
+    let is_vakant = |sq: Square| board.empty_square(&sq);
 
     let legal_square =
         |square: &Square| is_vakant(*square) && square_has_neighbors(*square, board, sq);

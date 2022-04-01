@@ -12,7 +12,7 @@ pub fn grasshopper_move(board: &Board, sq: Square) -> Vec<Square>
         let mut start = sq_add(sq, add);
         let st = start;
 
-        while board.contains_key(&start)
+        while !board.empty_square(&start)
         {
             start = sq_add(start, add);
         }

@@ -79,7 +79,9 @@ impl Hex {
     #[allow(non_snake_case)]
     pub fn to_pixels(&self) -> (f32, f32) {
         let M = Orientation::flat();
-        const S: f32 = 5.1;
+        const _S: f32 = 5.1;
+        const S: f32 = _S * 0.8;
+        //const S: f32 = 2.55;
 
         let x: f32 = (M.f0 * self.q as f32 + M.f1 * self.r as f32) * S;
         let y: f32 = (M.f2 * self.q as f32 + M.f3 * self.r as f32) * S;
@@ -163,7 +165,8 @@ fn round(_q: f32, _r: f32, _s: f32) -> Square {
 #[allow(non_snake_case)]
 pub fn pixel_to_hex(x: isize, y: isize) -> Square {
     let (x, y) = (x as f32 - 50., y as f32 - 50.);
-    const S: f32 = 5.1;
+    const _S: f32 = 5.1;
+    const S: f32 = _S * 0.8;
 
     let x = x / S;
     let y = y / S;

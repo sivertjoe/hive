@@ -12,7 +12,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
         let an = neighbors(&a);
         let bn = neighbors(&b);
 
-        an.into_iter().any(|a| bn.contains(&a) && board.contains_key(&a))
+        an.into_iter().any(|a| bn.contains(&a) && !board.empty_square(&a))
     };
 
     let org = sq;
@@ -28,7 +28,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             let sq = sq_add(current, dir);
 
             let not_prev_pos = !res.contains(&sq);
-            let empty_square = !board.contains_key(&sq);
+            let empty_square = board.empty_square(&sq);
 
             // we want to make the piece to 'hug the left wall'. These
             // functions (hopefully) avoids jumping between paralell structures

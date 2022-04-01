@@ -36,7 +36,7 @@ impl BoardSquare
     }
 }
 
-const Y: usize = 2 * (3 * 3 * 2 * 2 * 1);
+// const Y: usize = 2 * (3 * 3 * 2 * 2 * 1);
 
 #[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -76,6 +76,11 @@ impl Board
         self.board.iter()
     }
 
+    pub fn values(&self) -> std::collections::hash_map::Values<Square, BoardSquare>
+    {
+        self.board.values()
+    }
+
     pub fn remove(&mut self, sq: Square)
     {
         self.board.remove(&sq);
@@ -86,6 +91,15 @@ impl Board
         I: Iterator<Item = (Square, BoardSquare)>,
     {
         self.board = HashMap::from_iter(iter);
+    }
+
+    pub fn empty_square(&self, sq: &Square) -> bool
+    {
+        match self.get(sq)
+        {
+            Some(bs) => bs.pieces.is_empty(),
+            None => true,
+        }
     }
 
     pub fn play_move(&mut self, r#move: Move)
@@ -108,12 +122,12 @@ impl Board
 
     pub fn play_from_to(&mut self, from: Square, to: Square)
     {
-        let old = unsafe
+        let bs = self.board.get_mut(&from).unwrap();
+        let old = bs.remove_piece().unwrap();
+        if bs.pieces.is_empty()
         {
-            let bs = self.board.get_mut(&from).unwrap_unchecked();
-            let old = bs.remove_piece().unwrap_unchecked();
-            old
-        };
+            self.board.remove(&from).unwrap();
+        }
 
         self.board
             .entry(to)
