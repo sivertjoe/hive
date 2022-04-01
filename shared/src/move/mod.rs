@@ -60,18 +60,15 @@ pub fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
 
 fn legal_on_board_move(p: &Piece, board: &mut Board, sq: Square) -> Vec<Square>
 {
-    match p.r#type
+    let vec = match p.r#type
     {
         BoardPiece::Ant => ant_move(board, sq),
         BoardPiece::Beetle => beetle_move(board, sq),
         BoardPiece::Grasshopper => grasshopper_move(board, sq),
         BoardPiece::Queen => queen_move(board, sq),
         BoardPiece::Spider => spider_move(board, sq),
-    }
-    // TODO: Improve me!!
-    .into_iter()
-    .filter(|to| !create_island(board, sq, *to))
-    .collect()
+    };
+    create_island_multiple(board, sq, vec)
 }
 
 // Hmm, t-this can be simplified r-right?
@@ -118,6 +115,58 @@ pub fn neighbors(sq: &Square) -> [Square; 6]
         iter.next().unwrap(),
         iter.next().unwrap(),
     ]
+}
+
+
+fn create_island_multiple(board: &Board, from: Square, mut vec: Vec<Square>) -> Vec<Square>
+{
+    let mut global = Vec::with_capacity(board.len());
+    let mut local = Vec::with_capacity(board.len());
+
+    vec.retain(|to| !_create_island(board, from, *to, &mut global, &mut local));
+    vec
+}
+
+pub fn _create_island(
+    board: &Board,
+    from: Square,
+    to: Square,
+    global: &mut Vec<Square>,
+    local: &mut Vec<Square>,
+) -> bool
+{
+    let mut board = board.clone();
+    board.play_from_to(from, to);
+
+    let mut iter = neighbors(&from)
+        .into_iter()
+        .filter(|sq| match board.get(sq)
+        {
+            Some(bs) => !bs.pieces.is_empty(),
+            _ => false,
+        })
+        .chain(std::iter::once(to));
+
+    let res = if let Some(fst) = iter.next()
+    {
+        //if global.is_empty()
+        {
+            global.clear();
+            create_set(&board, fst, global);
+        }
+
+        iter.any(|s| {
+            local.clear();
+            check_global(&board, s, &global, local)
+        })
+    }
+    else
+    {
+        false
+    };
+
+    //board.un_play_from_to(from, to);
+    res
 }
 
 
@@ -169,7 +218,7 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
 
 pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
 {
-    //let mut board = board.clone();
+    let mut board = board.clone();
     board.play_from_to(from, to);
 
     let mut iter = neighbors(&from)
@@ -180,10 +229,6 @@ pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
             _ => false,
         })
         .chain(std::iter::once(to));
-
-
-
-
 
     let res = if let Some(fst) = iter.next()
     {
@@ -203,7 +248,7 @@ pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
         false
     };
 
-    board.un_play_from_to(from, to);
+    //board.un_play_from_to(from, to);
     res
 }
 

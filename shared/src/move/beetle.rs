@@ -9,7 +9,7 @@ pub fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
                 && (board.contains_key(square)
                     || neighbors(square)
                         .into_iter()
-                        .any(|_sq| _sq != sq && board.contains_key(&_sq)))
+                        .any(|_sq| _sq != sq && !board.empty_square(&_sq)))
         };
 
         neighbors(&sq).into_iter().filter(have_neighbor).collect()

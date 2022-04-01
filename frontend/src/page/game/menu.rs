@@ -19,7 +19,7 @@ impl Menu {
         let mut menu = Menu { items };
         let color = menu.items.first().unwrap().piece.color;
 
-        for square in board.board.values() {
+        for square in board.values() {
             for bp in square
                 .pieces
                 .iter()

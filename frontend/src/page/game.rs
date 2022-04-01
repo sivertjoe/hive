@@ -21,20 +21,21 @@ pub struct Model {
     pub piece: Option<SelectedPiece>,
     pub svg: ElRef<SvgGraphicsElement>,
     pub color: Option<Color>,
-
     pub menu: Option<Menu>,
-
     pub size: String,
     pub label: Option<String>,
-
     pub socket: Option<WebSocket>,
+    pub legal_moves_cache: Option<Vec<Square>>,
+
+    pub radius: usize,
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
+    // TODO: Figure this out
     let gen_size = |n: f32| {
-        let l = 5. * n;
-        let h = 9. * n;
-        let w = 10. * n;
+        let l = 5. * n * 0.8;
+        let h = 9. * n * 0.8;
+        let w = 10. * n * 0.8;
 
         format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
     };
@@ -50,10 +51,10 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     .on_close(|_| Msg::Close)
                     .build_and_open()
                     .ok();
-
+                const DEFAULT_RAD: usize = 0;
                 Some(Model {
                     game: None,
-                    gridv3: create_gridv3(5),
+                    gridv3: create_gridv3(DEFAULT_RAD),
                     menu: None,
                     svg: ElRef::default(),
                     color: None,
@@ -61,6 +62,8 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     size,
                     label: None,
                     socket,
+                    legal_moves_cache: None,
+                    radius: DEFAULT_RAD,
                 })
             }
             _ => None,
@@ -102,20 +105,22 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     };
 
     match msg {
-        Msg::Open => {
-            log("OPEN");
-        }
-        Msg::Close => {
-            log("CLOSE");
-        }
+        Msg::Open => {}
+        Msg::Close => {}
         Msg::MessageReceived(msg) => {
-            // No need to play the move if we just played it.
             if let Ok(r#move) = msg.json::<Move>() {
+                // No need to play the move if we just played it.
                 if !just_my_move(model, &r#move) {
+                    let rad = sq_radius(r#move.sq);
                     play_move(model, r#move);
+                    if rad > model.radius {
+                        model.radius = rad;
+                        model.gridv3 = create_gridv3(rad);
+                        grid_from_board(model);
+                    }
+                } else {
+                    log("IGNORE");
                 }
-            } else {
-                log("oh");
             }
         }
 
@@ -145,6 +150,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     model.menu = Some(Menu::new(items, board));
                 }
 
+                let rad = get_radius(model);
+                log(rad);
+                if rad > model.radius {
+                    model.radius = rad;
+                    model.gridv3 = create_gridv3(rad);
+                }
                 grid_from_board(model);
             }
             Err(e) => {
@@ -160,7 +171,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let (x, y) = get_mouse_pos(model, mm);
             let sq = pixel_to_hex(x as isize, y as isize);
 
-            log(sq);
 
             if let Some(hex) = get_piece_from_square_mut(model, sq) {
                 let cl = hex.clone();
@@ -193,6 +203,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let board = get_board_mut(model).unwrap();
                     board.place_piece(selected_piece.piece, sq, Some(selected_piece.old_square));
 
+                    let rad = get_radius(model);
+                    if rad > model.radius {
+                        model.radius = rad;
+                        model.gridv3 = create_gridv3(rad);
+                        grid_from_board(model);
+                    }
+
                     if let Some(r#move) = get_move(
                         model,
                         selected_piece.piece,
@@ -212,6 +229,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
 
                 clear_highlighs(model);
+                model.legal_moves_cache = None;
                 //clear_red(model);
             }
         }
@@ -229,12 +247,16 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
                 if my_turn && correct_piece {
                     let piece = &sel.piece;
-                    let board = &model.game.as_ref().unwrap().board;
+                    let board = &mut model.game.as_mut().unwrap().board;
 
-                    let legal_moves = legal_moves(piece, board, Some(sel.old_square));
-                    set_highlight(model, legal_moves, true);
+                    if model.legal_moves_cache.is_none() {
+                        model.legal_moves_cache =
+                            Some(legal_moves(piece, board, Some(sel.old_square)));
+                    }
                 }
             }
+
+            set_highlight(model, true);
         }
 
         Msg::Place((id, event)) => {
@@ -258,6 +280,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 if let Some(r#move) = get_move(model, piece, sq, None) {
                     orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                 }
+                let rad = get_radius(model);
+                if rad > model.radius {
+                    model.radius = rad;
+                    model.gridv3 = create_gridv3(rad);
+                    grid_from_board(model);
+                }
 
                 if game_complete(model) {
                     let id = model.game.as_ref().unwrap()._id;
@@ -265,15 +293,18 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
             }
 
+            model.legal_moves_cache = None;
             clear_highlighs(model);
         }
 
         Msg::Drag(piece) => {
             clear_highlighs(model);
             if legal_turn(model) {
-                let board = &model.game.as_ref().unwrap().board;
-                let legal_moves = legal_moves(&piece, board, None);
-                set_highlight(model, legal_moves, true);
+                let board = &mut model.game.as_mut().unwrap().board;
+                if model.legal_moves_cache.is_none() {
+                    model.legal_moves_cache = Some(legal_moves(&piece, board, None));
+                }
+                set_highlight(model, true);
             }
         }
 

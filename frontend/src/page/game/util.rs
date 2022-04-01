@@ -18,7 +18,6 @@ pub fn get_hex_from_square(model: &mut Model, sq: Square) -> Option<&mut Hex> {
 pub fn place_piece(model: &mut Model, piece: Piece, sq: Square) {
     if let Some(hex) = get_hex_from_square(model, sq) {
         hex.place_piece(piece);
-        model.game.as_mut().unwrap().board.turns += 1;
     }
 }
 
@@ -29,6 +28,7 @@ pub fn play_move(model: &mut Model, r#move: Move) {
         }
     }
     place_piece(model, r#move.piece, r#move.sq);
+    get_board_mut(model).unwrap().play_move(r#move);
 }
 
 pub fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
@@ -91,15 +91,24 @@ pub fn clear_highlighs(model: &mut Model) {
     }
 }
 
+#[allow(dead_code)]
 pub fn clear_red(model: &mut Model) {
     for hex in &mut model.gridv3 {
         hex.red = false;
     }
 }
 
-pub fn set_highlight(model: &mut Model, moves: Vec<Square>, val: bool) {
-    for mov in moves {
-        get_hex_from_square(model, mov).as_mut().unwrap().selected = val;
+pub fn set_highlight(model: &mut Model, val: bool) {
+    if let Some(moves) = &model.legal_moves_cache {
+        for mov in moves {
+            //get_hex_from_square(model, *mov).as_mut().unwrap().selected = val;
+            model
+                .gridv3
+                .iter_mut()
+                .find(|hex| hex.sq() == *mov)
+                .unwrap()
+                .selected = val;
+        }
     }
 }
 
@@ -134,7 +143,7 @@ pub fn get_color(game: &GameResource) -> Option<Color> {
 }
 
 pub fn grid_from_board(model: &mut Model) {
-    for (&sq, board_square) in model.game.as_ref().unwrap().board.board.iter() {
+    for (&sq, board_square) in model.game.as_ref().unwrap().board.iter() {
         for piece in &board_square.pieces {
             let hex = model.gridv3.iter_mut().find(|hex| hex.sq() == sq).unwrap();
             hex.place_piece(*piece);
@@ -177,4 +186,26 @@ pub fn just_my_move(model: &Model, r#move: &Move) -> bool {
         .as_ref()
         .map(|color| *color == r#move.piece.color)
         .unwrap_or(false)
+}
+
+pub fn sq_radius(sq: Square) -> usize {
+    [sq.0.abs(), sq.1.abs(), sq.2.abs()]
+        .into_iter()
+        .max()
+        .unwrap() as usize
+        + 1
+}
+
+pub fn get_radius(model: &Model) -> usize {
+    model
+        .game
+        .as_ref()
+        .unwrap()
+        .board
+        .iter()
+        .map(|(sq, _)| [sq.0.abs(), sq.1.abs(), sq.2.abs()])
+        .flatten()
+        .max()
+        .unwrap_or(0) as usize
+        + 1
 }

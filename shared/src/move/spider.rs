@@ -19,14 +19,14 @@ fn _spider_move(
         let an = neighbors(&a);
         let bn = neighbors(&b);
 
-        an.into_iter().any(|a| bn.contains(&a) && board.contains_key(&a))
+        an.into_iter().any(|a| bn.contains(&a) && !board.empty_square(&a))
     };
 
     for &dir in &dirs
     {
         let dt = sq_add(sq, dir);
         if !visit.contains(&dt)
-            && !board.contains_key(&dt)
+            && board.empty_square(&dt)
             && square_has_neighbors(dt, board, origin)
             && common_neighbors(sq, dt)
         {
