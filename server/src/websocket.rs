@@ -1,4 +1,3 @@
-use futures::future::select_all;
 use tokio::{
     net::{TcpListener, TcpStream},
     select,
@@ -10,8 +9,7 @@ use tungstenite::{handshake::server::Request, Result};
 
 pub struct Message
 {
-    pub game_id: ObjectId,
-    pub r#move:  Move,
+    pub r#move: Move,
 }
 
 use std::collections::HashMap;
@@ -27,17 +25,26 @@ struct State
 
 impl State
 {
-    async fn send_updates(&mut self, game_id: ObjectId, r#move: Move)
+    async fn send_updates(&mut self, r#move: Move)
     {
-        if let Some(senders) = self.map.get_mut(&game_id)
+        let game_id = r#move.game_id.clone();
+        if let Some(senders) = self.map.remove(&game_id)
         {
-            let _ = select_all(senders.iter_mut().map(|s| Box::pin(s.send(r#move.clone())))).await;
+            use futures::stream::{self, StreamExt};
+            let new = stream::iter(senders)
+                .filter_map(|tx| {
+                    let mv = r#move.clone();
+                    async move { tx.send(mv).await.ok().map(|_| tx) }
+                })
+                .collect::<Vec<mpsc::Sender<Move>>>()
+                .await;
+
+            self.map.insert(game_id, new);
         }
     }
 
     fn add_sender(&mut self, id: ObjectId, sender: mpsc::Sender<Move>)
     {
-        // TODO: Retain socket with closed connections
         self.map.entry(id).or_default().push(sender);
     }
 }
@@ -69,7 +76,7 @@ pub async fn spawn_web_socket_server(mut rx: mpsc::Receiver<Message>)
         select! {
            msg = rx.recv() => {
                if let Some(msg) = msg {
-                state.send_updates(msg.game_id, msg.r#move).await;
+                state.send_updates(msg.r#move).await;
                }
             },
 
@@ -94,7 +101,7 @@ pub async fn spawn_web_socket_server(mut rx: mpsc::Receiver<Message>)
 
 async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Receiver<Move>)
 {
-    use futures::stream::StreamExt;
+    use futures::{stream::StreamExt, SinkExt};
     println!("ENTER");
 
     use tungstenite::{Error::ConnectionClosed, Message::Close};
@@ -118,9 +125,14 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
             }
 
             msg = rx.recv() => {
-                if let Some(_move) = msg
+                if let Some(r#move) = msg
                 {
-                    // send move
+                    let text = serde_json::to_string(&r#move).unwrap();
+                    let msg = tungstenite::Message::Text(text);
+                    if let Err(_) = ws.send(msg).await
+                    {
+                        break;
+                    }
                 }
             }
         }
