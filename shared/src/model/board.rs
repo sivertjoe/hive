@@ -36,12 +36,14 @@ impl BoardSquare
     }
 }
 
+const Y: usize = 2 * (3 * 3 * 2 * 2 * 1);
+
 #[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Board
 {
     #[serde_as(as = "Vec<(_, _)>")]
-    pub board: HashMap<Square, BoardSquare>,
+    board: HashMap<Square, BoardSquare>,
 
     pub queens: [Option<Square>; 2],
     pub turns:  usize,
@@ -49,6 +51,43 @@ pub struct Board
 
 impl Board
 {
+    pub fn get(&self, sq: &Square) -> Option<&BoardSquare>
+    {
+        self.board.get(sq)
+    }
+
+    pub fn contains_key(&self, sq: &Square) -> bool
+    {
+        self.board.contains_key(sq)
+    }
+
+    pub fn len(&self) -> usize
+    {
+        self.board.len()
+    }
+
+    pub fn insert(&mut self, sq: Square, bs: BoardSquare)
+    {
+        self.board.insert(sq, bs);
+    }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<Square, BoardSquare>
+    {
+        self.board.iter()
+    }
+
+    pub fn remove(&mut self, sq: Square)
+    {
+        self.board.remove(&sq);
+    }
+
+    pub fn from_iter<I>(&mut self, iter: I)
+    where
+        I: Iterator<Item = (Square, BoardSquare)>,
+    {
+        self.board = HashMap::from_iter(iter);
+    }
+
     pub fn play_move(&mut self, r#move: Move)
     {
         // Have logic to check for legal move here
@@ -59,15 +98,22 @@ impl Board
     {
         if let Some(bs) = self.board.get_mut(&to)
         {
-            let p = bs.remove_piece().unwrap();
+            let p = unsafe
+            {
+                bs.remove_piece().unwrap_unchecked()
+            };
             self.board.entry(from).and_modify(|bs| bs.place_piece(p));
         }
     }
 
     pub fn play_from_to(&mut self, from: Square, to: Square)
     {
-        let bs = self.board.get_mut(&from).unwrap();
-        let old = bs.remove_piece().unwrap();
+        let old = unsafe
+        {
+            let bs = self.board.get_mut(&from).unwrap_unchecked();
+            let old = bs.remove_piece().unwrap_unchecked();
+            old
+        };
 
         self.board
             .entry(to)

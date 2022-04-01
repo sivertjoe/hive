@@ -54,10 +54,7 @@ pub fn legal_moves(p: &Piece, board: &mut Board, board_pos: Option<Square>) -> V
 
 pub fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
 {
-    neighbors(&sq)
-        .into_iter()
-        .filter(|s| *s != me)
-        .any(|s| board.board.contains_key(&s))
+    neighbors(&sq).into_iter().filter(|s| *s != me).any(|s| board.contains_key(&s))
 }
 
 
@@ -82,7 +79,7 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
 {
     // Good neighbors have only same color neighbors or none
     let good_neighbors = |sq: &Square| {
-        neighbors(sq).into_iter().all(|sq| match board.board.get(&sq)
+        neighbors(sq).into_iter().all(|sq| match board.get(&sq)
         {
             None => true,
             Some(s) => s.top().color == piece.color,
@@ -91,10 +88,9 @@ fn legal_new_piece_moves(piece: &Piece, board: &Board) -> Vec<Square>
 
     let not_touching_other_color =
         //|sq: Square| board.board.get(&sq).map_or(true, |s| s.piece.color == piece.color);
-        |sq: Square| board.board.get(&sq).is_none() && good_neighbors(&sq);
+        |sq: Square| board.get(&sq).is_none() && good_neighbors(&sq);
 
     board
-        .board
         .iter()
         .filter_map(|(sq, bp)| {
             (bp.top().color == piece.color).then(|| {
@@ -128,7 +124,7 @@ pub fn neighbors(sq: &Square) -> [Square; 6]
 // @TODO, make this better
 fn create_set(board: &Board, fst: Square, set: &mut Vec<Square>)
 {
-    for sq in neighbors(&fst).into_iter().filter(|sq| match board.board.get(sq)
+    for sq in neighbors(&fst).into_iter().filter(|sq| match board.get(sq)
     {
         Some(bs) => !bs.pieces.is_empty(),
         _ => false,
@@ -151,7 +147,7 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
     }
 
     //for sq in neighbors(&sq).into_iter().filter(|s| board.board.contains_key(s))
-    for sq in neighbors(&sq).into_iter().filter(|sq| match board.board.get(sq)
+    for sq in neighbors(&sq).into_iter().filter(|sq| match board.get(sq)
     {
         Some(bs) => !bs.pieces.is_empty(),
         _ => false,
@@ -178,7 +174,7 @@ pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
 
     let mut iter = neighbors(&from)
         .into_iter()
-        .filter(|sq| match board.board.get(sq)
+        .filter(|sq| match board.get(sq)
         {
             Some(bs) => !bs.pieces.is_empty(),
             _ => false,
@@ -191,8 +187,8 @@ pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
 
     let res = if let Some(fst) = iter.next()
     {
-        let mut global = Vec::with_capacity(board.board.len());
-        let mut local = Vec::with_capacity(board.board.len());
+        let mut global = Vec::with_capacity(board.len());
+        let mut local = Vec::with_capacity(board.len());
 
 
         create_set(&board, fst, &mut global);
@@ -246,9 +242,7 @@ mod test
         let mut board = Board::default();
         for sq in [(0, -1, 1), (0, 0, 0), (0, 1, -1)]
         {
-            board
-                .board
-                .insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+            board.insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
         }
 
         let from = (0, 1, -1);
@@ -287,9 +281,7 @@ mod test
 
         for sq in squares
         {
-            board
-                .board
-                .insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+            board.insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
         }
 
         let from = (1, 0, -1);
@@ -332,9 +324,7 @@ mod test
 
         for sq in squares
         {
-            board
-                .board
-                .insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+            board.insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
         }
 
         let from = (0, 0, 0);
@@ -347,7 +337,7 @@ mod test
 
         assert!(!create_island(&mut board, from, to));
 
-        board.board.remove(&(2, 1, -3));
+        board.remove((2, 1, -3));
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 

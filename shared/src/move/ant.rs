@@ -12,13 +12,13 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
         let an = neighbors(&a);
         let bn = neighbors(&b);
 
-        an.into_iter().any(|a| bn.contains(&a) && board.board.contains_key(&a))
+        an.into_iter().any(|a| bn.contains(&a) && board.contains_key(&a))
     };
 
     let org = sq;
     let mut current = sq;
 
-    let mut res = Vec::with_capacity(board.board.len() * 2);
+    let mut res = Vec::with_capacity(board.len() * 2);
 
     loop
     {
@@ -28,7 +28,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             let sq = sq_add(current, dir);
 
             let not_prev_pos = !res.contains(&sq);
-            let empty_square = !board.board.contains_key(&sq);
+            let empty_square = !board.contains_key(&sq);
 
             // we want to make the piece to 'hug the left wall'. These
             // functions (hopefully) avoids jumping between paralell structures
@@ -78,7 +78,7 @@ fn can_fit(current: Square, next: Square, board: &Board) -> bool
     }
     let max_n = |n: usize| cmp(current, next, n, std::cmp::max);
     let min_n = |n: usize| cmp(current, next, n, std::cmp::min);
-    let occupied = |a, b| board.board.contains_key(&a) && board.board.contains_key(&b);
+    let occupied = |a, b| board.contains_key(&a) && board.contains_key(&b);
 
 
     let (a, b) = match (current, next)
@@ -125,11 +125,9 @@ mod test
 
         for e in enemy_square
         {
-            board
-                .board
-                .insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+            board.insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
         }
-        board.board.insert(ant_square, BoardSquare::new(ant));
+        board.insert(ant_square, BoardSquare::new(ant));
 
         board.turns = 8; // To avoid queen check
 
@@ -169,11 +167,9 @@ mod test
 
         for e in enemy_square
         {
-            board
-                .board
-                .insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+            board.insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
         }
-        board.board.insert(ant_square, BoardSquare::new(ant));
+        board.insert(ant_square, BoardSquare::new(ant));
 
         board.turns = 3; // To avoid queen check
 
@@ -202,16 +198,16 @@ mod test
         let mut board = Board::default();
         let p = Piece::new(BoardPiece::Ant, Color::Black);
 
-        board.board.insert((-4, 0, 4), BoardSquare::new(p));
-        board.board.insert((-2, -1, 3), BoardSquare::new(p));
+        board.insert((-4, 0, 4), BoardSquare::new(p));
+        board.insert((-2, -1, 3), BoardSquare::new(p));
         assert!(!can_fit((-3, 0, 3), (-3, -1, 4), &board));
 
-        board.board.insert((-2, 2, 0), BoardSquare::new(p));
-        board.board.insert((-3, 4, -1), BoardSquare::new(p));
+        board.insert((-2, 2, 0), BoardSquare::new(p));
+        board.insert((-3, 4, -1), BoardSquare::new(p));
         assert!(!can_fit((-2, 3, -1), (-3, 3, 0), &board));
 
-        board.board.insert((2, -4, 2), BoardSquare::new(p));
-        board.board.insert((3, -3, 0), BoardSquare::new(p));
+        board.insert((2, -4, 2), BoardSquare::new(p));
+        board.insert((3, -3, 0), BoardSquare::new(p));
         assert!(!can_fit((2, -3, 1), (3, -4, 1), &board));
     }
 }

@@ -12,7 +12,7 @@ pub fn grasshopper_move(board: &Board, sq: Square) -> Vec<Square>
         let mut start = sq_add(sq, add);
         let st = start;
 
-        while board.board.contains_key(&start)
+        while board.contains_key(&start)
         {
             start = sq_add(start, add);
         }
@@ -27,8 +27,6 @@ pub fn grasshopper_move(board: &Board, sq: Square) -> Vec<Square>
 #[cfg(test)]
 mod test
 {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
@@ -45,7 +43,7 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
+        board.from_iter(pos.into_iter());
         board.turns = 3;
 
         let mut legal_moves = grasshopper_move(&board, grasshopper_square);
@@ -72,8 +70,8 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
-        board.turns = board.board.len();
+        board.from_iter(pos.into_iter());
+        board.turns = board.len();
 
         let mut legal_moves = grasshopper_move(&board, grasshopper_square);
         let mut ans = vec![(-2, 0, 2)];
@@ -99,7 +97,7 @@ mod test
         }
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
+        board.from_iter(pos.into_iter());
         board.turns = 8; // To avoid queen check
 
         let mut legal_moves = grasshopper_move(&board, grasshopper_square);
