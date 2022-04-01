@@ -13,11 +13,9 @@ mod queen;
 use queen::*;
 
 mod grasshopper;
-use std::collections::HashSet;
-
 use grasshopper::*;
 
-pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<Square>
+pub fn legal_moves(p: &Piece, board: &mut Board, board_pos: Option<Square>) -> Vec<Square>
 {
     if board.is_complete()
     {
@@ -63,7 +61,7 @@ pub fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
 }
 
 
-fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
+fn legal_on_board_move(p: &Piece, board: &mut Board, sq: Square) -> Vec<Square>
 {
     match p.r#type
     {
@@ -128,37 +126,41 @@ pub fn neighbors(sq: &Square) -> [Square; 6]
 
 
 // @TODO, make this better
-fn create_set(board: &Board, fst: Square, set: &mut HashSet<Square>)
+fn create_set(board: &Board, fst: Square, set: &mut Vec<Square>)
 {
-    set.insert(fst);
-
-    for sq in neighbors(&fst).into_iter().filter(|s| board.board.contains_key(s))
+    for sq in neighbors(&fst).into_iter().filter(|sq| match board.board.get(sq)
+    {
+        Some(bs) => !bs.pieces.is_empty(),
+        _ => false,
+    })
     {
         if !set.contains(&sq)
+        //if set.insert(sq)
         {
+            set.push(sq);
             create_set(board, sq, set);
         }
     }
 }
 
-fn check_global(
-    board: &Board,
-    sq: Square,
-    global: &HashSet<Square>,
-    local: &mut HashSet<Square>,
-) -> bool
+fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec<Square>) -> bool
 {
     if !global.contains(&sq)
     {
         return true;
     }
 
-    local.insert(sq);
-
-    for sq in neighbors(&sq).into_iter().filter(|s| board.board.contains_key(s))
+    //for sq in neighbors(&sq).into_iter().filter(|s| board.board.contains_key(s))
+    for sq in neighbors(&sq).into_iter().filter(|sq| match board.board.get(sq)
+    {
+        Some(bs) => !bs.pieces.is_empty(),
+        _ => false,
+    })
     {
         if !local.contains(&sq)
+        //if local.push(sq)
         {
+            local.push(sq);
             if check_global(board, sq, global, local)
             {
                 return true;
@@ -168,30 +170,45 @@ fn check_global(
     false
 }
 
-fn create_island(board: &Board, from: Square, to: Square) -> bool
+
+pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
 {
-    let mut board = board.clone();
+    //let mut board = board.clone();
     board.play_from_to(from, to);
 
-
-    let mut iter = neighbors(&dbg!(from))
+    let mut iter = neighbors(&from)
         .into_iter()
-        .filter(|s| board.board.contains_key(s))
+        .filter(|sq| match board.board.get(sq)
+        {
+            Some(bs) => !bs.pieces.is_empty(),
+            _ => false,
+        })
         .chain(std::iter::once(to));
 
 
-    if let Some(fst) = iter.next()
+
+
+
+    let res = if let Some(fst) = iter.next()
     {
-        let mut global = HashSet::with_capacity(board.board.len());
+        let mut global = Vec::with_capacity(board.board.len());
+        let mut local = Vec::with_capacity(board.board.len());
+
+
         create_set(&board, fst, &mut global);
 
-        iter.any(|s| check_global(&board, s, &global, &mut HashSet::new()))
+        iter.any(|s| {
+            local.clear();
+            check_global(&board, s, &global, &mut local)
+        })
     }
     else
     {
-        println!("here?");
         false
-    }
+    };
+
+    board.un_play_from_to(from, to);
+    res
 }
 
 #[cfg(test)]
@@ -237,12 +254,12 @@ mod test
         let from = (0, 1, -1);
         let to = (1, 0, -1);
 
-        assert!(!p_create_island(&board, from, to));
+        assert!(!create_island(&mut board, from, to));
 
         let from = (0, 1, -1);
         let to = (0, 2, -2);
 
-        assert!(p_create_island(&board, from, to));
+        assert!(create_island(&mut board, from, to));
     }
 
     #[test]
@@ -278,12 +295,12 @@ mod test
         let from = (1, 0, -1);
         let to = (2, -1, -1);
 
-        assert!(!p_create_island(&board, from, to));
+        assert!(!create_island(&mut board, from, to));
 
         let from = (1, 0, -1);
         let to = (3, -1, -2);
 
-        assert!(p_create_island(&board, from, to));
+        assert!(create_island(&mut board, from, to));
     }
 
     #[test]
@@ -323,17 +340,17 @@ mod test
         let from = (0, 0, 0);
         let to = (1, 0, -1);
 
-        assert!(!p_create_island(&board, from, to));
+        assert!(!create_island(&mut board, from, to));
 
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 
-        assert!(!p_create_island(&board, from, to));
+        assert!(!create_island(&mut board, from, to));
 
         board.board.remove(&(2, 1, -3));
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 
-        assert!(p_create_island(&board, from, to));
+        assert!(create_island(&mut board, from, to));
     }
 }

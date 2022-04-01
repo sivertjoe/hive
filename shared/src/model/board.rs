@@ -55,14 +55,19 @@ impl Board
         self.place_piece(r#move.piece, r#move.sq, r#move.old_sq);
     }
 
+    pub fn un_play_from_to(&mut self, from: Square, to: Square)
+    {
+        if let Some(bs) = self.board.get_mut(&to)
+        {
+            let p = bs.remove_piece().unwrap();
+            self.board.entry(from).and_modify(|bs| bs.place_piece(p));
+        }
+    }
+
     pub fn play_from_to(&mut self, from: Square, to: Square)
     {
         let bs = self.board.get_mut(&from).unwrap();
         let old = bs.remove_piece().unwrap();
-        if bs.pieces.is_empty()
-        {
-            self.board.remove(&from).unwrap();
-        }
 
         self.board
             .entry(to)
