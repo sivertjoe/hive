@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use shared::{model::*, r#move::*};
 
 
@@ -29,12 +29,10 @@ fn criterion_benchmark(c: &mut Criterion)
 
     for sq in squares
     {
-        board
-            .board
-            .insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+        board.insert(sq, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
     }
 
-    board.board.remove(&(2, 1, -3));
+    board.remove((2, 1, -3));
 
     let from = (-1, -2, 3);
     let to = (-2, -1, 3);

@@ -5,7 +5,7 @@ use crate::{
 
 pub fn queen_move(board: &Board, sq: Square) -> Vec<Square>
 {
-    let is_vakant = |sq: Square| !board.board.contains_key(&sq);
+    let is_vakant = |sq: Square| !board.contains_key(&sq);
 
     let legal_square =
         |square: &Square| is_vakant(*square) && square_has_neighbors(*square, board, sq);
@@ -17,8 +17,6 @@ pub fn queen_move(board: &Board, sq: Square) -> Vec<Square>
 #[cfg(test)]
 mod test
 {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
@@ -35,7 +33,7 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
+        board.from_iter(pos.into_iter());
         board.turns = 3;
 
         let mut legal_moves = queen_move(&board, queen_square);

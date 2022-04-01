@@ -6,16 +6,16 @@ pub fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
     let def = || {
         let have_neighbor = |square: &Square| {
             sq != *square
-                && (board.board.contains_key(square)
+                && (board.contains_key(square)
                     || neighbors(square)
                         .into_iter()
-                        .any(|_sq| _sq != sq && board.board.contains_key(&_sq)))
+                        .any(|_sq| _sq != sq && board.contains_key(&_sq)))
         };
 
         neighbors(&sq).into_iter().filter(have_neighbor).collect()
     };
 
-    match board.board.get(&sq)
+    match board.get(&sq)
     {
         Some(bs) if bs.pieces.len() > 1 => neighbors(&sq).into_iter().collect(),
         _ => def(),
@@ -24,8 +24,6 @@ pub fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
 #[cfg(test)]
 mod test
 {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
@@ -42,8 +40,8 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
-        board.turns = board.board.len();
+        board.from_iter(pos.into_iter());
+        board.turns = board.len();
 
         let mut legal_moves = beetle_move(&board, beetle_square);
         let mut ans = vec![(1, -1, 0), (0, 0, 0), (0, 1, -1)];
@@ -95,7 +93,7 @@ mod test
         }
 
 
-        board.board = HashMap::from_iter(vec.into_iter());
+        board.from_iter(vec.into_iter());
         board.turns = 8; // To avoid queen check
 
         let mut legal_moves = beetle_move(&board, beetle_square);

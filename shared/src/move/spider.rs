@@ -19,14 +19,14 @@ fn _spider_move(
         let an = neighbors(&a);
         let bn = neighbors(&b);
 
-        an.into_iter().any(|a| bn.contains(&a) && board.board.contains_key(&a))
+        an.into_iter().any(|a| bn.contains(&a) && board.contains_key(&a))
     };
 
     for &dir in &dirs
     {
         let dt = sq_add(sq, dir);
         if !visit.contains(&dt)
-            && !board.board.contains_key(&dt)
+            && !board.contains_key(&dt)
             && square_has_neighbors(dt, board, origin)
             && common_neighbors(sq, dt)
         {
@@ -62,8 +62,6 @@ pub fn spider_move(board: &Board, sq: Square) -> Vec<Square>
 #[cfg(test)]
 mod test
 {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
@@ -81,7 +79,7 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
+        board.from_iter(pos.into_iter());
         board.turns = 3;
 
         let mut legal_moves = spider_move(&board, spider_square);
@@ -110,7 +108,7 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
+        board.from_iter(pos.into_iter());
         board.turns = 3;
 
         let mut legal_moves = spider_move(&board, spider_square);
@@ -141,7 +139,7 @@ mod test
         ];
 
 
-        board.board = HashMap::from_iter(pos.into_iter());
+        board.from_iter(pos.into_iter());
         board.turns = 3;
 
         let mut legal_moves = spider_move(&board, spider_square);
