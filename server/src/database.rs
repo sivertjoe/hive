@@ -233,7 +233,7 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
     let col = db.collection::<Game>(GAMES);
 
     /* Explanation:
-     * First, fetch all games.
+     * First, fetch all games that are ongoing
      * Then, do a lookup, aka (SQL) join. The syntax is
      *
      * from: join from which collection
@@ -258,6 +258,11 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
     Ok(col
         .aggregate(
             [
+                doc! {
+                    "$matches": {
+                        "complete": false
+                    }
+                },
                 doc! {
                     "$lookup": {
                         "from": USERS,
@@ -689,7 +694,7 @@ mod test
         assert!(play_move(guard.db(), mov).await.is_ok());
 
         let game = get_game_by_id(guard.db(), game_id).await?;
-        assert_eq!(game.board.board.len(), 1);
+        assert_eq!(game.board.len(), 1);
         assert_eq!(game.board.turns, 1);
 
         Ok(())
