@@ -45,7 +45,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                 orders.perform_cmd(async move { Msg::FetchGame(get_game(id).await) });
                 let size = gen_size(0.5);
 
-                let socket = WebSocket::builder(ws_url(id.clone()), orders)
+                let socket = WebSocket::builder(ws_url(id), orders)
                     .on_message(Msg::MessageReceived)
                     .on_open(|| Msg::Open)
                     .on_close(|_| Msg::Close)

@@ -39,8 +39,7 @@ impl State
 {
     async fn send_updates(&mut self, r#move: Move)
     {
-        let game_id = r#move.game_id.clone();
-        if let Some(senders) = self.map.remove(&game_id)
+        if let Some(senders) = self.map.remove(&r#move.game_id)
         {
             let new = stream::iter(senders)
                 .filter_map(|tx| {
@@ -50,7 +49,7 @@ impl State
                 .collect::<Vec<mpsc::Sender<Move>>>()
                 .await;
 
-            self.map.insert(game_id, new);
+            self.map.insert(r#move.game_id, new);
         }
     }
 
@@ -127,7 +126,7 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
             {
                 println!("SENDING PING");
                 let msg = Ping(Vec::new());
-                if let Err(_) = ws.send(msg).await
+                if ws.send(msg).await.is_err()
                 {
                     break;
                 }
@@ -157,7 +156,7 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
                 {
                     let text = serde_json::to_string(&r#move).unwrap();
                     let msg = Text(text);
-                    if let Err(_) = ws.send(msg).await
+                    if ws.send(msg).await.is_err()
                     {
                         break;
                     }
