@@ -167,7 +167,7 @@ pub fn legal_turn(model: &Model) -> bool {
 
 pub fn legal_piece(model: &Model) -> bool {
     match (model.piece.as_ref(), model.color) {
-        (Some(ref sel), Some(ref color)) => sel.piece.color == *color,
+        (Some(sel), Some(ref color)) => sel.piece.color == *color,
         _ => false,
     }
 }
@@ -203,8 +203,7 @@ pub fn get_radius(model: &Model) -> usize {
         .unwrap()
         .board
         .iter()
-        .map(|(sq, _)| [sq.0.abs(), sq.1.abs(), sq.2.abs()])
-        .flatten()
+        .flat_map(|(sq, _)| [sq.0.abs(), sq.1.abs(), sq.2.abs()])
         .max()
         .unwrap_or(0) as usize
         + 1
