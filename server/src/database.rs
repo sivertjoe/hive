@@ -36,7 +36,7 @@ pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 pub async fn connect() -> Result<Client, Error>
 {
-    let mut client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
+    let mut client_options = ClientOptions::parse("mongodb://db:27017").await?;
     client_options.app_name = Some("My App".to_string());
 
     client_options.credential = Some(

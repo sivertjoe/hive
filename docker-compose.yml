@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.9'
 services:
   db:
     image: mongo:latest
@@ -11,11 +11,14 @@ services:
       - /data/mongo
 
   server:
+    depends_on:
+      - "db"
     build:
       context: .
       dockerfile: Dockerfile.server
     ports:
       - '5000:5000'
+      - '5001:5001'
 
   website:
     build:
@@ -26,3 +29,4 @@ services:
 
 volumes:
   mongodb_data_container:
+
