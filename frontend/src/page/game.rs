@@ -105,7 +105,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     };
 
     match msg {
-        Msg::Open => {}
+        Msg::Open => {
+            log("OPEN");
+        }
         Msg::Close => {}
         Msg::MessageReceived(msg) => {
             if let Ok(r#move) = msg.json::<Move>() {
