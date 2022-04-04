@@ -1,3 +1,4 @@
+use const_format::formatcp;
 use futures::stream::StreamExt;
 use mongodb::{
     bson::{self, doc, oid::ObjectId},
