@@ -14,6 +14,11 @@ pub const LIVE: &str = "live";
 pub const MAX_CREATE_GAME: u32 = 25;
 
 
+pub const PROTOCOL: &str = "mongodb";
+pub const URL: &str = if cfg!(debug_assertion) { "localhost" } else { "db" };
+pub const PORT: usize = 27017;
+pub const DB_PATH: &str = formatcp!("{PROTOCOL}://{URL}:{PORT}");
+
 // collections types
 pub const USERS: &str = "users";
 pub const GAMES: &str = "games";
@@ -36,7 +41,7 @@ pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 pub async fn connect() -> Result<Client, Error>
 {
-    let mut client_options = ClientOptions::parse("mongodb://db:27017").await?;
+    let mut client_options = ClientOptions::parse(DB_PATH).await?;
     client_options.app_name = Some("My App".to_string());
 
     client_options.credential = Some(
