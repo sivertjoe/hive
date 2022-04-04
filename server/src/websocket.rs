@@ -1,10 +1,22 @@
+use std::time::Duration;
+
+use futures::{
+    stream::{self, StreamExt},
+    SinkExt,
+};
 use tokio::{
     net::{TcpListener, TcpStream},
     select,
     sync::mpsc,
+    time,
 };
 use tokio_tungstenite::{accept_hdr_async, WebSocketStream};
-use tungstenite::{handshake::server::Request, Result};
+use tungstenite::{
+    handshake::server::Request,
+    Error::ConnectionClosed,
+    Message::{Close, Ping, Pong, Text},
+    Result,
+};
 
 
 pub struct Message
@@ -30,7 +42,6 @@ impl State
         let game_id = r#move.game_id.clone();
         if let Some(senders) = self.map.remove(&game_id)
         {
-            use futures::stream::{self, StreamExt};
             let new = stream::iter(senders)
                 .filter_map(|tx| {
                     let mv = r#move.clone();
@@ -99,16 +110,30 @@ pub async fn spawn_web_socket_server(mut rx: mpsc::Receiver<Message>)
     }
 }
 
+
 async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Receiver<Move>)
 {
-    use futures::{stream::StreamExt, SinkExt};
     println!("ENTER");
 
-    use tungstenite::{Error::ConnectionClosed, Message::Close};
+
+    let mut interval = time::interval(Duration::from_secs(20));
+    interval.reset();
 
     loop
     {
         select! {
+
+            _ = interval.tick() =>
+            {
+                println!("SENDING PING");
+                let msg = Ping(Vec::new());
+                if let Err(_) = ws.send(msg).await
+                {
+                    break;
+                }
+
+            }
+
             res = ws.next() =>
             {
                 if let Some(msg) = res
@@ -118,6 +143,9 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
                         Ok(Close(_)) | Err(ConnectionClosed) => {
                             break;
                         }
+                        Ok(Pong(_)) => {
+                            println!("RECEIVED PONG");
+                        }, // Woo
                         e => panic!("{:?}", e),
                     }
                 }
@@ -128,7 +156,7 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
                 if let Some(r#move) = msg
                 {
                     let text = serde_json::to_string(&r#move).unwrap();
-                    let msg = tungstenite::Message::Text(text);
+                    let msg = Text(text);
                     if let Err(_) = ws.send(msg).await
                     {
                         break;
