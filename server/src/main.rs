@@ -40,7 +40,7 @@ async fn spawn_http_server(state: State) -> Result<(), SError>
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
                 let state = state.clone();
-                async move { handle(req, state).await }
+                handle(req, state)
             }))
         }
     });
