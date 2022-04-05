@@ -64,7 +64,6 @@ pub async fn main() -> Result<(), SError>
         tx,
     };
 
-
     tokio::spawn(spawn_web_socket_server(rx));
     let _ = spawn_http_server(state).await;
 

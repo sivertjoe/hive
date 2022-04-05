@@ -16,7 +16,8 @@ pub const MAX_CREATE_GAME: u32 = 25;
 
 
 pub const PROTOCOL: &str = "mongodb";
-pub const URL: &str = if cfg!(debug_assertion) { "localhost" } else { "db" };
+
+pub const URL: &str = if cfg!(debug_assertions) { "0.0.0.0" } else { "db" };
 pub const PORT: usize = 27017;
 pub const DB_PATH: &str = formatcp!("{PROTOCOL}://{URL}:{PORT}");
 
@@ -259,7 +260,7 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
         .aggregate(
             [
                 doc! {
-                    "$matches": {
+                    "$match": {
                         "complete": false
                     }
                 },
