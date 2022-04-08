@@ -364,34 +364,14 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
         ev(Ev::MouseUp, |event| {
             crate::Msg::Game(Msg::MouseUp(event))
         }),
-        svg![
-            el_ref(&model.svg),
-            ev(Ev::MouseMove, |event| {
-                crate::Msg::Game(Msg::Move(event))
-            }),
-            ev(Ev::MouseUp, |event| {
-                event.prevent_default();
-                crate::Msg::Game(Msg::Release(event))
-            }),
-            ev(Ev::MouseDown, |event| {
-                crate::Msg::Game(Msg::Click(event))
-            }),
-            attrs! {
-                At::ViewBox => "0 0 100 100",
-                At::Draggable => "true",
-            },
-            defs![g![
-                attrs! { At::Id => "pod" },
-                polygon![attrs! {
-                    //At::Stroke => "gold",
-                    At::StrokeWidth => ".5",
-                    At::Points => &model.size,
-                },]
-            ]],
-            model.gridv3.iter().map(Hex::node),
+        C!("board-container"),
+        view_pieces(model),
+        div![
+            C!("board"),
+            view_board(model),
             IF!(model.piece.is_some() => {
-                model.piece.as_ref().unwrap().node()
+                model.piece.as_ref().unwrap().node(&model)
             })
-        ]
+        ],
     ]
 }
