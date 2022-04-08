@@ -120,6 +120,7 @@ svg {
 .piece-menu {
     background-color: var(--background-color);
     border-radius: 1rem;
+    position: relative;
 }
 
 .selected-piece {
@@ -145,10 +146,10 @@ svg {
 
 
 piece {
-    position: absolute;
+    /* position: absolute; */
     top: 0;
     left: 0;
-    background-size: cover;
+    background-size: contain;
     will-change: transform;
     pointer-events: none;
 }

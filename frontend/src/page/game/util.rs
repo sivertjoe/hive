@@ -4,6 +4,8 @@ use seed::{self, prelude::*};
 use shared::{model::*, ObjectId};
 use web_sys::MouseEvent;
 
+pub const RATIO: f32 = 1.1547005;
+
 pub fn get_board_mut(model: &mut Model) -> Option<&mut Board> {
     model.game.as_mut().map(|game| &mut game.board)
 }
@@ -37,26 +39,6 @@ pub fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
     let (x, y) = (x as f32, y as f32);
 
     ((x - ctm.e()) / ctm.a(), (y - ctm.f()) / ctm.d())
-}
-
-pub fn piece_color(b: BoardPiece, color: Color) -> &'static str {
-    if color == Color::White {
-        match b {
-            BoardPiece::Queen => "gold",
-            BoardPiece::Ant => "blue",
-            BoardPiece::Spider => "peru",
-            BoardPiece::Grasshopper => "palegreen",
-            BoardPiece::Beetle => "rebeccapurple",
-        }
-    } else {
-        match b {
-            BoardPiece::Queen => "DarkGoldenRod",
-            BoardPiece::Ant => "MidnightBlue",
-            BoardPiece::Spider => "brown",
-            BoardPiece::Grasshopper => "green",
-            BoardPiece::Beetle => "indigo",
-        }
-    }
 }
 
 pub fn get_piece_from_square_mut(model: &mut Model, sq: Square) -> Option<&mut Hex> {
@@ -211,7 +193,6 @@ pub fn get_radius(model: &Model) -> usize {
 
 // Nothing to see here 🧙
 pub fn get_piece_dim(_model: &Model) -> (f32, f32) {
-    const RATIO: f32 = 1.1547005;
     let h = 54.0;
 
     (h * RATIO, h)
@@ -232,12 +213,13 @@ pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crat
             St::Transform => format!("translate({x}px, {y}px)"),
             St::Width => format!("{w}px"),
             St::Height => format!("{h}px"),
+            St::Position => "absolute"
         }
     ]
 }
 
 #[inline]
-fn piece_class(piece: &Piece) -> String {
+pub fn piece_class(piece: &Piece) -> String {
     use BoardPiece::*;
     use Color::*;
     format!(

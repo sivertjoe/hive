@@ -28,17 +28,21 @@ pub struct Model {
     pub legal_moves_cache: Option<Vec<Square>>,
 
     pub radius: usize,
+
+    pub _size: f32,
+    pub _modifier: f32,
+}
+
+fn gen_size(n: f32) -> String {
+    let l = 5. * n * 0.8;
+    let h = 9. * n * 0.8;
+    let w = 10. * n * 0.8;
+
+    format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     // TODO: Figure this out
-    let gen_size = |n: f32| {
-        let l = 5. * n * 0.8;
-        let h = 9. * n * 0.8;
-        let w = 10. * n * 0.8;
-
-        format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
-    };
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
             Ok(id) => {
@@ -52,6 +56,10 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     .build_and_open()
                     .ok();
                 const DEFAULT_RAD: usize = 0;
+                const DEFAULT_SIZE: f32 = 0.5;
+                const DEFAULT_MOD: f32 = 1.0;
+
+
                 Some(Model {
                     game: None,
                     gridv3: create_gridv3(DEFAULT_RAD),
@@ -64,6 +72,9 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     socket,
                     legal_moves_cache: None,
                     radius: DEFAULT_RAD,
+
+                    _size: DEFAULT_SIZE,
+                    _modifier: DEFAULT_MOD,
                 })
             }
             _ => None,
