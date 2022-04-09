@@ -345,17 +345,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
-    div![div![
+    div![
         C!("container"),
-        grid(model),
-        IF!(model.menu.is_some() => {
-            div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
-        }),
-        IF!(model.label.is_some() => match model.label {
-            Some(ref s) => h2! [C!("error"), s],
-            _ => unreachable!()
-        })
-    ]]
+        div![
+            style! {
+                St::Display => "flex",
+                //St::Float => "left",
+            },
+            IF!(model.menu.is_some() => {
+                div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
+            }),
+            div![
+                grid(model),
+                IF!(model.label.is_some() => match model.label {
+                    Some(ref s) => h2! [C!("error"), s],
+                    _ => unreachable!()
+                })
+            ]
+        ]
+    ]
 }
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {

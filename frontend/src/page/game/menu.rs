@@ -35,7 +35,7 @@ impl Menu {
     pub fn to_node(&self) -> Node<crate::Msg> {
         div![
             style! {
-                St::Display => "flex",
+                St::Display => "block"
             },
             self.items
                 .iter()
@@ -82,7 +82,8 @@ impl MenuEntry {
         let w = h * RATIO;
 
         //let padding = 10.;
-        let x = i as f32 * w; // + (i as f32 * padding);
+        let y = i as f32 * h + (i as f32 * 5.);
+        let x = 0;
 
 
         let piece = || -> Node<crate::Msg> {
@@ -90,11 +91,10 @@ impl MenuEntry {
                 Tag::from("piece"),
                 C!(piece_class(&piece_clone)),
                 style! {
-                    St::Transform => format!("translate({x}px, 0px)"),
+                    St::Transform => format!("translate({x}px, {y}px)"),
                     St::Width => "inherit",
                     St::Height => "inherit",
                     St::Position => "absolute",
-                    //St::Background => "transparent",
                 }
             ]
         };
@@ -104,6 +104,8 @@ impl MenuEntry {
             ev(Ev::DragStart, move |event| {
                 let ev = to_drag_event(&event);
                 use web_sys::{Element, HtmlDivElement};
+
+                log("dragstart");
 
                 let idv = event
                     .current_target()
@@ -135,11 +137,15 @@ impl MenuEntry {
                 At::Draggable => "true",
             },
             style! {
-                    St::Width => format!("{w}px"),
-                    St::Height => format!("{h}px"),
+                St::Width => format!("{w}px"),
+                St::Height => format!("{h}px"),
+                St::Border => "solid 2px red",
+                St::AlignItems => "center"
+                    // St::Background => "blue",
+
             },
             piece(),
-            h1!(self.count_left)
+            //h1!(self.count_left)
         ]
     }
 }

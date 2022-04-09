@@ -118,9 +118,9 @@ svg {
 }
 
 .piece-menu {
-    background-color: var(--background-color);
-    border-radius: 1rem;
     position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .selected-piece {
@@ -134,6 +134,8 @@ svg {
     height: 800px;
     position: relative;
     margin: auto;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .board {
