@@ -91,9 +91,8 @@ impl MenuEntry {
                 Tag::from("piece"),
                 C!(piece_class(&piece_clone)),
                 style! {
-                    St::Transform => format!("translate({x}px, {y}px)"),
-                    St::Width => "inherit",
-                    St::Height => "inherit",
+                    St::Width => format!("{w}px"),
+                    St::Height=> format!("{h}px"),
                     St::Position => "absolute",
                 }
             ]
@@ -115,7 +114,13 @@ impl MenuEntry {
                     .clone();
 
                 let el: &Element = idv.as_ref();
-                let pi: Element = el.children().get_with_index(0).unwrap();
+                let pi: Element = el
+                    .children()
+                    .get_with_index(0)
+                    .unwrap()
+                    .children()
+                    .get_with_index(0)
+                    .unwrap();
 
 
                 let id = el.id();
@@ -144,8 +149,12 @@ impl MenuEntry {
                     // St::Background => "blue",
 
             },
-            piece(),
-            //h1!(self.count_left)
+            div![
+                style! {
+                    St::Position => "relative"
+                },
+                piece(),
+            ] //h1!(self.count_left)
         ]
     }
 }

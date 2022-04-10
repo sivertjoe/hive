@@ -166,7 +166,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
 
                 let rad = get_radius(model);
-                log(rad);
                 if rad > model.radius {
                     model.radius = rad;
                     model.gridv3 = create_gridv3(rad);
@@ -318,6 +317,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let board = &mut model.game.as_mut().unwrap().board;
                 if model.legal_moves_cache.is_none() {
                     model.legal_moves_cache = Some(legal_moves(&piece, board, None));
+                    log("!!?");
                 }
                 set_highlight(model, true);
             }

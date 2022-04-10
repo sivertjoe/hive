@@ -89,18 +89,13 @@ impl Hex {
         let (x, y) = self.to_pixels();
 
 
-        let opacity = match self.selected {
-            true => "0.5",
-            false => "1.0",
-        };
-        let (fill, opacity) = if self.red {
-            ("red", "0.5")
-        } else {
-            ("transparent", opacity)
+        let (fill, opacity) = match (self.red, self.selected) {
+            (true, _) => ("red", "0.5"),
+            (_, true) => ("grey", "1.0"),
+            _ => ("transparent", "1.0"),
         };
 
         let c = if self.highlight { "selected-piece" } else { "" };
-
 
         r#use![attrs! {
             At::Href => "#pod",
