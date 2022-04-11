@@ -35,7 +35,7 @@ impl Menu {
     pub fn to_node(&self) -> Node<crate::Msg> {
         div![
             style! {
-                St::Display => "flex",
+                St::Display => "block"
             },
             self.items
                 .iter()
@@ -71,14 +71,34 @@ pub struct MenuEntry {
 
 impl MenuEntry {
     pub fn to_node(&self) -> Node<crate::Msg> {
-        let stroke = piece_color(self.piece.r#type, self.piece.color);
         let id = format!("{:?}", self.piece.r#type);
 
         let piece_clone = self.piece;
+
+
+        let h = 80.;
+        // 🧙🧙🧙
+        let w = h * (RATIO * 0.99);
+
+
+        let piece = || -> Node<crate::Msg> {
+            custom![
+                Tag::from("piece"),
+                C!(piece_class(&piece_clone)),
+                style! {
+                    St::Width => format!("{w}px"),
+                    St::Height=> format!("{h}px"),
+                }
+            ]
+        };
+
+
         div![
             ev(Ev::DragStart, move |event| {
                 let ev = to_drag_event(&event);
                 use web_sys::{Element, HtmlDivElement};
+
+                log("dragstart");
 
                 let idv = event
                     .current_target()
@@ -88,6 +108,15 @@ impl MenuEntry {
                     .clone();
 
                 let el: &Element = idv.as_ref();
+                let pi: Element = el
+                    .children()
+                    .get_with_index(0)
+                    .unwrap()
+                    .children()
+                    .get_with_index(0)
+                    .unwrap();
+
+
                 let id = el.id();
 
                 ev.data_transfer()
@@ -95,20 +124,30 @@ impl MenuEntry {
                     .set_data("text/plain", &id)
                     .unwrap();
 
+                ev.data_transfer()
+                    .unwrap()
+                    .set_drag_image(&pi, (60. * RATIO) as i32, 60);
+
 
                 crate::Msg::Game(Msg::Drag(piece_clone))
             }),
             id!(&id),
-            style! {
-                    St::Width => "90px",//self.spacing,
-                    St::Height => "90px", // ??
-                    St::Background => stroke,
-                    St::Color => "black",
-            },
             attrs! {
-                    At::Draggable => "true",
+                At::Draggable => "true",
             },
-            h1!(self.count_left)
+            style! {
+                St::Width => format!("{w}px"),
+                St::Height => format!("{h}px"),
+                St::Color => "red",
+                St::Margin => "5px",
+            },
+            div![
+                style! {
+                    St::Position => "relative"
+                },
+                piece(),
+                h1!(self.count_left),
+            ],
         ]
     }
 }

@@ -28,17 +28,21 @@ pub struct Model {
     pub legal_moves_cache: Option<Vec<Square>>,
 
     pub radius: usize,
+
+    pub _size: f32,
+    pub _modifier: f32,
+}
+
+fn gen_size(n: f32) -> String {
+    let l = 5. * n * 0.8;
+    let h = 9. * n * 0.8;
+    let w = 10. * n * 0.8;
+
+    format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
     // TODO: Figure this out
-    let gen_size = |n: f32| {
-        let l = 5. * n * 0.8;
-        let h = 9. * n * 0.8;
-        let w = 10. * n * 0.8;
-
-        format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
-    };
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
             Ok(id) => {
@@ -52,6 +56,10 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     .build_and_open()
                     .ok();
                 const DEFAULT_RAD: usize = 0;
+                const DEFAULT_SIZE: f32 = 0.5;
+                const DEFAULT_MOD: f32 = 1.0;
+
+
                 Some(Model {
                     game: None,
                     gridv3: create_gridv3(DEFAULT_RAD),
@@ -64,6 +72,9 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     socket,
                     legal_moves_cache: None,
                     radius: DEFAULT_RAD,
+
+                    _size: DEFAULT_SIZE,
+                    _modifier: DEFAULT_MOD,
                 })
             }
             _ => None,
@@ -155,7 +166,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 }
 
                 let rad = get_radius(model);
-                log(rad);
                 if rad > model.radius {
                     model.radius = rad;
                     model.gridv3 = create_gridv3(rad);
@@ -307,6 +317,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let board = &mut model.game.as_mut().unwrap().board;
                 if model.legal_moves_cache.is_none() {
                     model.legal_moves_cache = Some(legal_moves(&piece, board, None));
+                    log("!!?");
                 }
                 set_highlight(model, true);
             }
@@ -334,17 +345,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
-    div![div![
+    div![
         C!("container"),
-        grid(model),
-        IF!(model.menu.is_some() => {
-            div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
-        }),
-        IF!(model.label.is_some() => match model.label {
-            Some(ref s) => h2! [C!("error"), s],
-            _ => unreachable!()
-        })
-    ]]
+        div![
+            style! {
+                St::Display => "flex",
+                //St::Float => "left",
+            },
+            IF!(model.menu.is_some() => {
+                div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
+            }),
+            div![
+                grid(model),
+                IF!(model.label.is_some() => match model.label {
+                    Some(ref s) => h2! [C!("error"), s],
+                    _ => unreachable!()
+                })
+            ]
+        ]
+    ]
 }
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
@@ -364,34 +383,14 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
         ev(Ev::MouseUp, |event| {
             crate::Msg::Game(Msg::MouseUp(event))
         }),
-        svg![
-            el_ref(&model.svg),
-            ev(Ev::MouseMove, |event| {
-                crate::Msg::Game(Msg::Move(event))
-            }),
-            ev(Ev::MouseUp, |event| {
-                event.prevent_default();
-                crate::Msg::Game(Msg::Release(event))
-            }),
-            ev(Ev::MouseDown, |event| {
-                crate::Msg::Game(Msg::Click(event))
-            }),
-            attrs! {
-                At::ViewBox => "0 0 100 100",
-                At::Draggable => "true",
-            },
-            defs![g![
-                attrs! { At::Id => "pod" },
-                polygon![attrs! {
-                    //At::Stroke => "gold",
-                    At::StrokeWidth => ".5",
-                    At::Points => &model.size,
-                },]
-            ]],
-            model.gridv3.iter().map(Hex::node),
+        C!("board-container"),
+        view_pieces(model),
+        div![
+            C!("board"),
+            view_board(model),
             IF!(model.piece.is_some() => {
-                model.piece.as_ref().unwrap().node()
+                model.piece.as_ref().unwrap().node(&model)
             })
-        ]
+        ],
     ]
 }

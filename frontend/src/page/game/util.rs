@@ -4,6 +4,8 @@ use seed::{self, prelude::*};
 use shared::{model::*, ObjectId};
 use web_sys::MouseEvent;
 
+pub const RATIO: f32 = 1.1547005;
+
 pub fn get_board_mut(model: &mut Model) -> Option<&mut Board> {
     model.game.as_mut().map(|game| &mut game.board)
 }
@@ -37,26 +39,6 @@ pub fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
     let (x, y) = (x as f32, y as f32);
 
     ((x - ctm.e()) / ctm.a(), (y - ctm.f()) / ctm.d())
-}
-
-pub fn piece_color(b: BoardPiece, color: Color) -> &'static str {
-    if color == Color::White {
-        match b {
-            BoardPiece::Queen => "gold",
-            BoardPiece::Ant => "blue",
-            BoardPiece::Spider => "peru",
-            BoardPiece::Grasshopper => "palegreen",
-            BoardPiece::Beetle => "rebeccapurple",
-        }
-    } else {
-        match b {
-            BoardPiece::Queen => "DarkGoldenRod",
-            BoardPiece::Ant => "MidnightBlue",
-            BoardPiece::Spider => "brown",
-            BoardPiece::Grasshopper => "green",
-            BoardPiece::Beetle => "indigo",
-        }
-    }
 }
 
 pub fn get_piece_from_square_mut(model: &mut Model, sq: Square) -> Option<&mut Hex> {
@@ -207,4 +189,86 @@ pub fn get_radius(model: &Model) -> usize {
         .max()
         .unwrap_or(0) as usize
         + 1
+}
+
+// Nothing to see here 🧙
+pub fn get_piece_dim(_model: &Model) -> (f32, f32) {
+    let h = 55.0;
+
+    (h * RATIO, h)
+}
+
+pub fn get_piece_pos(_model: &Model, (x, y): (f32, f32)) -> (f32, f32) {
+    // _think_ * 8 because board is 800 * 800, vs 100 * 100 viewbox
+    (x * 8. - 31.5, y * 8. - 26.)
+}
+
+pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crate::Msg> {
+    let (x, y) = get_piece_pos(model, pos);
+    let (w, h) = get_piece_dim(model);
+    custom![
+        Tag::from("piece"),
+        C!(piece_class(piece)),
+        style! {
+            St::Transform => format!("translate({x}px, {y}px)"),
+            St::Width => format!("{w}px"),
+            St::Height => format!("{h}px"),
+        }
+    ]
+}
+
+#[inline]
+pub fn piece_class(piece: &Piece) -> String {
+    use BoardPiece::*;
+    use Color::*;
+    format!(
+        "{piece} {color}",
+        piece = match piece.r#type {
+            Ant => "ant",
+            Queen => "bee",
+            Grasshopper => "grasshopper",
+            Spider => "spider",
+            Beetle => "beetle",
+        },
+        color = match piece.color {
+            White => "white",
+            Black => "black",
+        }
+    )
+}
+
+pub fn view_board(model: &Model) -> Node<crate::Msg> {
+    svg![
+        el_ref(&model.svg),
+        ev(Ev::MouseMove, |event| {
+            crate::Msg::Game(Msg::Move(event))
+        }),
+        ev(Ev::MouseUp, |event| {
+            event.prevent_default();
+            crate::Msg::Game(Msg::Release(event))
+        }),
+        ev(Ev::MouseDown, |event| {
+            crate::Msg::Game(Msg::Click(event))
+        }),
+        attrs! {
+            At::ViewBox => "0 0 100 100",
+            At::Draggable => "true",
+        },
+        defs![g![
+            attrs! { At::Id => "pod" },
+            polygon![attrs! {
+                At::StrokeWidth => ".5",
+                At::Points => &model.size,
+            },]
+        ]],
+        model.gridv3.iter().map(Hex::node),
+    ]
+}
+
+pub fn view_pieces(model: &Model) -> Node<crate::Msg> {
+    div![model.gridv3.iter().filter_map(|hex| {
+        hex.pieces
+            .first()
+            .map(|p| piece_to_node(model, p, hex.to_pixels()))
+    })]
 }

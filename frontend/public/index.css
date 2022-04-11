@@ -118,11 +118,82 @@ svg {
 }
 
 .piece-menu {
-    background-color: var(--background-color);
-    border-radius: 1rem;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .selected-piece {
     border: 1px solid transparent;
     stroke: white;
+}
+
+
+.board-container {
+    width: 800px;
+    height: 800px;
+    position: relative;
+    margin: auto;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.board {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: inherit;
+    height: inherit;
+}
+
+
+piece {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-size: contain;
+    will-change: transform;
+    pointer-events: none;
+}
+
+.ant.white {
+    background-image: url(/public/svg/hive-ant-beige.svg);
+}
+
+.bee.white {
+    background-image: url(/public/svg/hive-bee-beige.svg);
+}
+
+.beetle.white {
+    background-image: url(/public/svg/hive-beetle-beige.svg);
+
+}
+
+.grasshopper.white {
+    background-image: url(/public/svg/hive-grashopper-beige.svg);
+}
+
+.spider.white {
+    background-image: url(/public/svg/hive-spider-beige.svg);
+}
+
+.ant.black {
+    background-image: url(/public/svg/hive-ant-black.svg);
+}
+
+.bee.black {
+    background-image: url(/public/svg/hive-bee-black.svg);
+}
+
+.beetle.black {
+    background-image: url(/public/svg/hive-beetle-black.svg);
+
+}
+
+.grasshopper.black {
+    background-image: url(/public/svg/hive-grashopper-black.svg);
+}
+
+.spider.black {
+    background-image: url(/public/svg/hive-spider-black.svg);
 }

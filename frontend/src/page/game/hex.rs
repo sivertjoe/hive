@@ -1,4 +1,3 @@
-use super::util::*;
 use seed::{self, prelude::*, *};
 use shared::model::game::*;
 
@@ -21,9 +20,6 @@ pub struct Hex {
     pub q: isize,
     pub r: isize,
     pub s: isize,
-
-    pub _x: f32,
-    pub _y: f32,
 
     pub pieces: Vec<Piece>,
     pub selected: bool,
@@ -55,8 +51,6 @@ impl Hex {
             q,
             r,
             s,
-            _x: 0.,
-            _y: 0.,
             pieces: Vec::new(),
             selected: false,
             highlight: false,
@@ -79,9 +73,6 @@ impl Hex {
     #[allow(non_snake_case)]
     pub fn to_pixels(&self) -> (f32, f32) {
         let M = Orientation::flat();
-        const _S: f32 = 5.1;
-        const S: f32 = _S * 0.8;
-        //const S: f32 = 2.55;
 
         let x: f32 = (M.f0 * self.q as f32 + M.f1 * self.r as f32) * S;
         let y: f32 = (M.f2 * self.q as f32 + M.f3 * self.r as f32) * S;
@@ -97,20 +88,11 @@ impl Hex {
     pub fn node(&self) -> Node<crate::Msg> {
         let (x, y) = self.to_pixels();
 
-        let opacity = match self.selected {
-            true => "0.5",
-            false => "1.0",
-        };
 
-
-
-        // @NOTE: red highlight removes any other color,
-        // Improve this when using actual images.
-        let fill = match (self.red, self.top(), self.selected) {
-            (true, _, _) => "red",
-            (_, Some(p), _) => piece_color(p.r#type, p.color),
-            (_, None, false) => "transparent",
-            (_, None, true) => "grey",
+        let (fill, opacity) = match (self.red, self.selected) {
+            (true, _) => ("red", "0.5"),
+            (_, true) => ("grey", "1.0"),
+            _ => ("transparent", "1.0"),
         };
 
         let c = if self.highlight { "selected-piece" } else { "" };
@@ -162,11 +144,12 @@ fn round(_q: f32, _r: f32, _s: f32) -> Square {
     (q as isize, r as isize, s as isize)
 }
 
+const _S: f32 = 5.1;
+const S: f32 = _S * 0.8;
+
 #[allow(non_snake_case)]
 pub fn pixel_to_hex(x: isize, y: isize) -> Square {
     let (x, y) = (x as f32 - 50., y as f32 - 50.);
-    const _S: f32 = 5.1;
-    const S: f32 = _S * 0.8;
 
     let x = x / S;
     let y = y / S;
