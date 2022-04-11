@@ -69,95 +69,12 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
     }
 }
 
-fn can_fit(current: Square, next: Square, board: &Board) -> bool
-{
-    fn cmp<F: Fn(isize, isize) -> isize>(a: Square, b: Square, n: usize, f: F) -> isize
-    {
-        match n
-        {
-            0 => f(a.0, b.0),
-            1 => f(a.1, b.1),
-            2 => f(a.2, b.2),
-            _ => unreachable!(),
-        }
-    }
-    let max_n = |n: usize| cmp(current, next, n, std::cmp::max);
-    let min_n = |n: usize| cmp(current, next, n, std::cmp::min);
-    let occupied = |a, b| board.contains_key(&a) && board.contains_key(&b);
-
-
-    let (a, b) = match (current, next)
-    {
-        ((a, _, _), (b, _, _)) if a == b =>
-        {
-            let a = (a + 1, min_n(1), min_n(2));
-            let b = (b - 1, max_n(1), max_n(2));
-            (a, b)
-        },
-        ((_, a, _), (_, b, _)) if a == b =>
-        {
-            let a = (min_n(0), a + 1, min_n(2));
-            let b = (max_n(0), b - 1, max_n(2));
-            (a, b)
-        },
-        ((_, _, a), (_, _, b)) if a == b =>
-        {
-            let a = (min_n(0), min_n(1), a + 1);
-            let b = (max_n(0), max_n(1), b - 1);
-            (a, b)
-        },
-        _ => unreachable!(),
-    };
-
-    !occupied(a, b)
-}
 
 #[cfg(test)]
 mod test
 {
     use super::*;
 
-    #[test]
-    fn test_ant_cant_fit()
-    {
-        let mut board = Board::default();
-        let ant_square = (2, -1, -1);
-        let ant = Piece::new(BoardPiece::Ant, Color::White);
-
-        let enemy_square =
-            [(2, -2, 0), (1, -2, 1), (1, -3, 2), (2, -4, 2), (3, -4, 1), (4, -4, 0), (4, -3, -1)];
-
-        for e in enemy_square
-        {
-            board.insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
-        }
-        board.insert(ant_square, BoardSquare::new(ant));
-
-        board.turns = 8; // To avoid queen check
-
-        let mut legal_moves = ant_move(&board, ant_square);
-
-        let mut ans = vec![
-            (1, -1, 0),
-            (0, -1, 1),
-            (0, -2, 2),
-            (0, -3, 3),
-            (1, -4, 3),
-            (2, -5, 3),
-            (3, -5, 2),
-            (4, -5, 1),
-            (5, -5, 0),
-            (5, -4, -1),
-            (5, -3, -2),
-            (4, -2, -2),
-            (3, -2, -1),
-        ];
-
-        legal_moves.sort();
-        ans.sort();
-
-        assert_eq!(legal_moves, ans);
-    }
 
     #[test]
     fn test_ant_simple()
