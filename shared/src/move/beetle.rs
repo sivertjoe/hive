@@ -1,4 +1,4 @@
-use crate::{model::*, r#move::neighbors};
+use super::*;
 
 pub fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
 {
@@ -12,7 +12,12 @@ pub fn beetle_move(board: &Board, sq: Square) -> Vec<Square>
                         .any(|_sq| _sq != sq && !board.empty_square(&_sq)))
         };
 
-        neighbors(&sq).into_iter().filter(have_neighbor).collect()
+        let fit = |from, to| if board.empty_square(&to) { can_fit(from, to, board) } else { true };
+
+        neighbors(&sq)
+            .into_iter()
+            .filter(|to| have_neighbor(to) && fit(sq, *to))
+            .collect()
     };
 
     match board.get(&sq)
@@ -103,5 +108,28 @@ mod test
         legal_moves.sort();
 
         assert_eq!(legal_moves, ans);
+    }
+
+    #[test]
+    fn test_beetle_cant_fit()
+    {
+        let mut board = Board::default();
+        let beetle_square = (1, -4, 3);
+        let beetle = Piece::new(BoardPiece::Beetle, Color::White);
+
+        let enemy_square = [(1, -3, 2), (2, -5, 3)];
+
+        for e in enemy_square
+        {
+            board.insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+        }
+        board.insert(beetle_square, BoardSquare::new(beetle));
+
+        board.turns = 3; // To avoid queen check
+
+        let legal_moves = legal_moves(&beetle, &board, Some(beetle_square));
+
+
+        assert_eq!(legal_moves, Vec::new());
     }
 }
