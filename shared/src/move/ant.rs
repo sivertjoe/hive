@@ -112,7 +112,6 @@ fn can_fit(current: Square, next: Square, board: &Board) -> bool
     !occupied(a, b)
 }
 
-
 #[cfg(test)]
 mod test
 {
@@ -160,7 +159,6 @@ mod test
         assert_eq!(legal_moves, ans);
     }
 
-
     #[test]
     fn test_ant_simple()
     {
@@ -195,7 +193,6 @@ mod test
 
         assert_eq!(legal_moves, ans);
     }
-
 
     #[test]
     fn test_can_fit()

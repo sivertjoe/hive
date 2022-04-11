@@ -51,12 +51,10 @@ pub fn legal_moves(p: &Piece, board: &mut Board, board_pos: Option<Square>) -> V
     }
 }
 
-
 pub fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
 {
     neighbors(&sq).into_iter().filter(|s| *s != me).any(|s| board.contains_key(&s))
 }
-
 
 fn legal_on_board_move(p: &Piece, board: &mut Board, sq: Square) -> Vec<Square>
 {
@@ -117,7 +115,6 @@ pub fn neighbors(sq: &Square) -> [Square; 6]
     ]
 }
 
-
 fn create_island_multiple(board: &Board, from: Square, mut vec: Vec<Square>) -> Vec<Square>
 {
     let mut global = Vec::with_capacity(board.len());
@@ -168,7 +165,6 @@ pub fn _create_island(
     //board.un_play_from_to(from, to);
     res
 }
-
 
 // @TODO, make this better
 fn create_set(board: &Board, fst: Square, set: &mut Vec<Square>)
