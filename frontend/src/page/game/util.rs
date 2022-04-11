@@ -193,14 +193,14 @@ pub fn get_radius(model: &Model) -> usize {
 
 // Nothing to see here 🧙
 pub fn get_piece_dim(_model: &Model) -> (f32, f32) {
-    let h = 54.0;
+    let h = 55.0;
 
     (h * RATIO, h)
 }
 
 pub fn get_piece_pos(_model: &Model, (x, y): (f32, f32)) -> (f32, f32) {
     // _think_ * 8 because board is 800 * 800, vs 100 * 100 viewbox
-    (x * 8. - 31., y * 8. - 26.)
+    (x * 8. - 31.5, y * 8. - 26.)
 }
 
 pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crate::Msg> {
@@ -213,7 +213,6 @@ pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crat
             St::Transform => format!("translate({x}px, {y}px)"),
             St::Width => format!("{w}px"),
             St::Height => format!("{h}px"),
-            St::Position => "absolute"
         }
     ]
 }

@@ -39,9 +39,7 @@ impl Menu {
             },
             self.items
                 .iter()
-                .filter(|entry| entry.count_left > 0)
-                .enumerate()
-                .map(|(i, entry)| entry.to_node(i))
+                .filter_map(|entry| (entry.count_left > 0).then(|| entry.to_node()))
         ]
     }
 
@@ -72,18 +70,15 @@ pub struct MenuEntry {
 }
 
 impl MenuEntry {
-    pub fn to_node(&self, i: usize) -> Node<crate::Msg> {
+    pub fn to_node(&self) -> Node<crate::Msg> {
         let id = format!("{:?}", self.piece.r#type);
 
         let piece_clone = self.piece;
 
 
-        let h = 90.;
-        let w = h * RATIO;
-
-        //let padding = 10.;
-        let y = i as f32 * h + (i as f32 * 5.);
-        let x = 0;
+        let h = 80.;
+        // 🧙🧙🧙
+        let w = h * (RATIO * 0.99);
 
 
         let piece = || -> Node<crate::Msg> {
@@ -93,7 +88,6 @@ impl MenuEntry {
                 style! {
                     St::Width => format!("{w}px"),
                     St::Height=> format!("{h}px"),
-                    St::Position => "absolute",
                 }
             ]
         };
@@ -144,17 +138,16 @@ impl MenuEntry {
             style! {
                 St::Width => format!("{w}px"),
                 St::Height => format!("{h}px"),
-                St::Border => "solid 2px red",
-                St::AlignItems => "center"
-                    // St::Background => "blue",
-
+                St::Color => "red",
+                St::Margin => "5px",
             },
             div![
                 style! {
                     St::Position => "relative"
                 },
                 piece(),
-            ] //h1!(self.count_left)
+                h1!(self.count_left),
+            ],
         ]
     }
 }
