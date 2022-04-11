@@ -1,3 +1,4 @@
+use super::*;
 use crate::{
     model::*,
     r#move::{neighbors, square_has_neighbors},
@@ -35,7 +36,11 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             let follows_path =
                 square_has_neighbors(sq, board, org) && common_neighbors(current, sq);
 
-            if not_prev_pos && empty_square && follows_path && can_fit(current, sq, board)
+            if not_prev_pos
+                && empty_square
+                && follows_path
+                && can_fit(current, sq, board)
+                && !create_island(board, org, sq)
             {
                 next = Some(sq);
                 current = sq;
@@ -209,5 +214,28 @@ mod test
         board.insert((2, -4, 2), BoardSquare::new(p));
         board.insert((3, -3, 0), BoardSquare::new(p));
         assert!(!can_fit((2, -3, 1), (3, -4, 1), &board));
+    }
+
+    #[test]
+    fn test_cant_move_around()
+    {
+        let mut board = Board::default();
+        let ant_square = (1, -4, 3);
+        let ant = Piece::new(BoardPiece::Ant, Color::White);
+
+        let enemy_square = [(1, -3, 2), (2, -5, 3)];
+
+        for e in enemy_square
+        {
+            board.insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+        }
+        board.insert(ant_square, BoardSquare::new(ant));
+
+        board.turns = 3; // To avoid queen check
+
+        let legal_moves = ant_move(&board, ant_square);
+
+
+        assert_eq!(legal_moves.len(), 0);
     }
 }

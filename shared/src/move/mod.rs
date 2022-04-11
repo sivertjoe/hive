@@ -215,8 +215,7 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
     false
 }
 
-
-pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
+pub fn create_island(board: &Board, from: Square, to: Square) -> bool
 {
     let mut board = board.clone();
     board.play_from_to(from, to);
