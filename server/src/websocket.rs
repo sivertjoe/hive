@@ -13,8 +13,7 @@ use tokio::{
 use tokio_tungstenite::{accept_hdr_async, WebSocketStream};
 use tungstenite::{
     handshake::server::Request,
-    Error::ConnectionClosed,
-    Message::{Close, Ping, Pong, Text},
+    Message::{Ping, Pong, Text},
     Result,
 };
 
@@ -139,13 +138,10 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
                 {
                     match msg
                     {
-                        Ok(Close(_)) | Err(ConnectionClosed) => {
-                            break;
-                        }
                         Ok(Pong(_)) => {
                             println!("RECEIVED PONG");
                         }, // Woo
-                        e => panic!("{:?}", e),
+                        _ => break,
                     }
                 }
 

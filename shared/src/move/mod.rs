@@ -15,7 +15,7 @@ use queen::*;
 mod grasshopper;
 use grasshopper::*;
 
-pub fn legal_moves(p: &Piece, board: &mut Board, board_pos: Option<Square>) -> Vec<Square>
+pub fn legal_moves(p: &Piece, board: &Board, board_pos: Option<Square>) -> Vec<Square>
 {
     if board.is_complete()
     {
@@ -51,14 +51,12 @@ pub fn legal_moves(p: &Piece, board: &mut Board, board_pos: Option<Square>) -> V
     }
 }
 
-
 pub fn square_has_neighbors(sq: Square, board: &Board, me: Square) -> bool
 {
     neighbors(&sq).into_iter().filter(|s| *s != me).any(|s| board.contains_key(&s))
 }
 
-
-fn legal_on_board_move(p: &Piece, board: &mut Board, sq: Square) -> Vec<Square>
+fn legal_on_board_move(p: &Piece, board: &Board, sq: Square) -> Vec<Square>
 {
     let vec = match p.r#type
     {
@@ -117,17 +115,17 @@ pub fn neighbors(sq: &Square) -> [Square; 6]
     ]
 }
 
-
 fn create_island_multiple(board: &Board, from: Square, mut vec: Vec<Square>) -> Vec<Square>
 {
     let mut global = Vec::with_capacity(board.len());
     let mut local = Vec::with_capacity(board.len());
 
-    vec.retain(|to| !_create_island(board, from, *to, &mut global, &mut local));
+    vec.retain(|to| !create_island(board, from, *to, &mut global, &mut local));
     vec
 }
 
-pub fn _create_island(
+
+pub fn create_island(
     board: &Board,
     from: Square,
     to: Square,
@@ -135,6 +133,7 @@ pub fn _create_island(
     local: &mut Vec<Square>,
 ) -> bool
 {
+    global.clear();
     let mut board = board.clone();
     board.play_from_to(from, to);
 
@@ -146,29 +145,15 @@ pub fn _create_island(
             _ => false,
         })
         .chain(std::iter::once(to));
+    let first = iter.next().unwrap();
 
-    let res = if let Some(fst) = iter.next()
-    {
-        //if global.is_empty()
-        {
-            global.clear();
-            create_set(&board, fst, global);
-        }
+    create_set(&board, first, global);
 
-        iter.any(|s| {
-            local.clear();
-            check_global(&board, s, &global, local)
-        })
-    }
-    else
-    {
-        false
-    };
-
-    //board.un_play_from_to(from, to);
-    res
+    iter.any(|s| {
+        local.clear();
+        check_global(&board, s, &global, local)
+    })
 }
-
 
 // @TODO, make this better
 fn create_set(board: &Board, fst: Square, set: &mut Vec<Square>)
@@ -180,7 +165,6 @@ fn create_set(board: &Board, fst: Square, set: &mut Vec<Square>)
     })
     {
         if !set.contains(&sq)
-        //if set.insert(sq)
         {
             set.push(sq);
             create_set(board, sq, set);
@@ -195,7 +179,6 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
         return true;
     }
 
-    //for sq in neighbors(&sq).into_iter().filter(|s| board.board.contains_key(s))
     for sq in neighbors(&sq).into_iter().filter(|sq| match board.get(sq)
     {
         Some(bs) => !bs.pieces.is_empty(),
@@ -203,7 +186,6 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
     })
     {
         if !local.contains(&sq)
-        //if local.push(sq)
         {
             local.push(sq);
             if check_global(board, sq, global, local)
@@ -216,46 +198,95 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
 }
 
 
-pub fn create_island(board: &mut Board, from: Square, to: Square) -> bool
+pub fn can_fit(current: Square, next: Square, board: &Board) -> bool
 {
-    let mut board = board.clone();
-    board.play_from_to(from, to);
-
-    let mut iter = neighbors(&from)
-        .into_iter()
-        .filter(|sq| match board.get(sq)
+    fn cmp<F: Fn(isize, isize) -> isize>(a: Square, b: Square, n: usize, f: F) -> isize
+    {
+        match n
         {
-            Some(bs) => !bs.pieces.is_empty(),
-            _ => false,
-        })
-        .chain(std::iter::once(to));
-
-    let res = if let Some(fst) = iter.next()
-    {
-        let mut global = Vec::with_capacity(board.len());
-        let mut local = Vec::with_capacity(board.len());
-
-
-        create_set(&board, fst, &mut global);
-
-        iter.any(|s| {
-            local.clear();
-            check_global(&board, s, &global, &mut local)
-        })
+            0 => f(a.0, b.0),
+            1 => f(a.1, b.1),
+            2 => f(a.2, b.2),
+            _ => unreachable!(),
+        }
     }
-    else
+    let max_n = |n: usize| cmp(current, next, n, std::cmp::max);
+    let min_n = |n: usize| cmp(current, next, n, std::cmp::min);
+    let occupied = |a, b| board.contains_key(&a) && board.contains_key(&b);
+
+
+    let (a, b) = match (current, next)
     {
-        false
+        ((a, _, _), (b, _, _)) if a == b =>
+        {
+            let a = (a + 1, min_n(1), min_n(2));
+            let b = (b - 1, max_n(1), max_n(2));
+            (a, b)
+        },
+        ((_, a, _), (_, b, _)) if a == b =>
+        {
+            let a = (min_n(0), a + 1, min_n(2));
+            let b = (max_n(0), b - 1, max_n(2));
+            (a, b)
+        },
+        ((_, _, a), (_, _, b)) if a == b =>
+        {
+            let a = (min_n(0), min_n(1), a + 1);
+            let b = (max_n(0), max_n(1), b - 1);
+            (a, b)
+        },
+        _ => unreachable!(),
     };
 
-    //board.un_play_from_to(from, to);
-    res
+    !occupied(a, b)
 }
 
 #[cfg(test)]
 mod test
 {
     use super::*;
+
+    #[test]
+    fn test_ant_cant_fit()
+    {
+        let mut board = Board::default();
+        let ant_square = (2, -1, -1);
+        let ant = Piece::new(BoardPiece::Ant, Color::White);
+
+        let enemy_square =
+            [(2, -2, 0), (1, -2, 1), (1, -3, 2), (2, -4, 2), (3, -4, 1), (4, -4, 0), (4, -3, -1)];
+
+        for e in enemy_square
+        {
+            board.insert(e, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black)));
+        }
+        board.insert(ant_square, BoardSquare::new(ant));
+
+        board.turns = 8; // To avoid queen check
+
+        let mut legal_moves = ant_move(&board, ant_square);
+
+        let mut ans = vec![
+            (1, -1, 0),
+            (0, -1, 1),
+            (0, -2, 2),
+            (0, -3, 3),
+            (1, -4, 3),
+            (2, -5, 3),
+            (3, -5, 2),
+            (4, -5, 1),
+            (5, -5, 0),
+            (5, -4, -1),
+            (5, -3, -2),
+            (4, -2, -2),
+            (3, -2, -1),
+        ];
+
+        legal_moves.sort();
+        ans.sort();
+
+        assert_eq!(legal_moves, ans);
+    }
 
     #[test]
     fn test_get_correct_neighbors()
@@ -293,12 +324,12 @@ mod test
         let from = (0, 1, -1);
         let to = (1, 0, -1);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         let from = (0, 1, -1);
         let to = (0, 2, -2);
 
-        assert!(create_island(&mut board, from, to));
+        assert!(create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
     }
 
     #[test]
@@ -332,12 +363,12 @@ mod test
         let from = (1, 0, -1);
         let to = (2, -1, -1);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         let from = (1, 0, -1);
         let to = (3, -1, -2);
 
-        assert!(create_island(&mut board, from, to));
+        assert!(create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
     }
 
     #[test]
@@ -375,17 +406,17 @@ mod test
         let from = (0, 0, 0);
         let to = (1, 0, -1);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         board.remove((2, 1, -3));
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 
-        assert!(create_island(&mut board, from, to));
+        assert!(create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
     }
 }
