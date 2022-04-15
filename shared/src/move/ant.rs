@@ -1,8 +1,4 @@
 use super::*;
-use crate::{
-    model::*,
-    r#move::{neighbors, square_has_neighbors},
-};
 
 pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
 {
