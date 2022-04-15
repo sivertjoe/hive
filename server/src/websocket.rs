@@ -138,13 +138,10 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
                 {
                     match msg
                     {
-                        Ok(Close(_)) | Err(ConnectionClosed) => {
-                            break;
-                        }
                         Ok(Pong(_)) => {
                             println!("RECEIVED PONG");
                         }, // Woo
-                        e => panic!("{:?}", e),
+                        _ => break,
                     }
                 }
 
