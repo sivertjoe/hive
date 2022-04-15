@@ -36,7 +36,13 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
                 && empty_square
                 && follows_path
                 && can_fit(current, sq, board)
-                && !create_island(board, org, sq)
+                && !create_island(
+                    board,
+                    org,
+                    sq,
+                    &mut Vec::with_capacity(board.len()),
+                    &mut Vec::with_capacity(board.len()),
+                )
             {
                 next = Some(sq);
                 current = sq;
@@ -144,7 +150,6 @@ mod test
         board.turns = 3; // To avoid queen check
 
         let legal_moves = ant_move(&board, ant_square);
-
 
         assert_eq!(legal_moves.len(), 0);
     }

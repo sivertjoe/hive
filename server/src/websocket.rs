@@ -13,8 +13,7 @@ use tokio::{
 use tokio_tungstenite::{accept_hdr_async, WebSocketStream};
 use tungstenite::{
     handshake::server::Request,
-    Error::ConnectionClosed,
-    Message::{Close, Ping, Pong, Text},
+    Message::{Ping, Pong, Text},
     Result,
 };
 

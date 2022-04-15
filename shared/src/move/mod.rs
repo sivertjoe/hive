@@ -120,11 +120,12 @@ fn create_island_multiple(board: &Board, from: Square, mut vec: Vec<Square>) -> 
     let mut global = Vec::with_capacity(board.len());
     let mut local = Vec::with_capacity(board.len());
 
-    vec.retain(|to| !_create_island(board, from, *to, &mut global, &mut local));
+    vec.retain(|to| !create_island(board, from, *to, &mut global, &mut local));
     vec
 }
 
-pub fn _create_island(
+
+pub fn create_island(
     board: &Board,
     from: Square,
     to: Square,
@@ -132,6 +133,7 @@ pub fn _create_island(
     local: &mut Vec<Square>,
 ) -> bool
 {
+    global.clear();
     let mut board = board.clone();
     board.play_from_to(from, to);
 
@@ -143,27 +145,14 @@ pub fn _create_island(
             _ => false,
         })
         .chain(std::iter::once(to));
+    let first = iter.next().unwrap();
 
-    let res = if let Some(fst) = iter.next()
-    {
-        //if global.is_empty()
-        {
-            global.clear();
-            create_set(&board, fst, global);
-        }
+    create_set(&board, first, global);
 
-        iter.any(|s| {
-            local.clear();
-            check_global(&board, s, &global, local)
-        })
-    }
-    else
-    {
-        false
-    };
-
-    //board.un_play_from_to(from, to);
-    res
+    iter.any(|s| {
+        local.clear();
+        check_global(&board, s, &global, local)
+    })
 }
 
 // @TODO, make this better
@@ -176,7 +165,6 @@ fn create_set(board: &Board, fst: Square, set: &mut Vec<Square>)
     })
     {
         if !set.contains(&sq)
-        //if set.insert(sq)
         {
             set.push(sq);
             create_set(board, sq, set);
@@ -191,7 +179,6 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
         return true;
     }
 
-    //for sq in neighbors(&sq).into_iter().filter(|s| board.board.contains_key(s))
     for sq in neighbors(&sq).into_iter().filter(|sq| match board.get(sq)
     {
         Some(bs) => !bs.pieces.is_empty(),
@@ -199,7 +186,6 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
     })
     {
         if !local.contains(&sq)
-        //if local.push(sq)
         {
             local.push(sq);
             if check_global(board, sq, global, local)
@@ -211,41 +197,6 @@ fn check_global(board: &Board, sq: Square, global: &Vec<Square>, local: &mut Vec
     false
 }
 
-pub fn create_island(board: &Board, from: Square, to: Square) -> bool
-{
-    let mut board = board.clone();
-    board.play_from_to(from, to);
-
-    let mut iter = neighbors(&from)
-        .into_iter()
-        .filter(|sq| match board.get(sq)
-        {
-            Some(bs) => !bs.pieces.is_empty(),
-            _ => false,
-        })
-        .chain(std::iter::once(to));
-
-    let res = if let Some(fst) = iter.next()
-    {
-        let mut global = Vec::with_capacity(board.len());
-        let mut local = Vec::with_capacity(board.len());
-
-
-        create_set(&board, fst, &mut global);
-
-        iter.any(|s| {
-            local.clear();
-            check_global(&board, s, &global, &mut local)
-        })
-    }
-    else
-    {
-        false
-    };
-
-    //board.un_play_from_to(from, to);
-    res
-}
 
 pub fn can_fit(current: Square, next: Square, board: &Board) -> bool
 {
@@ -373,12 +324,12 @@ mod test
         let from = (0, 1, -1);
         let to = (1, 0, -1);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         let from = (0, 1, -1);
         let to = (0, 2, -2);
 
-        assert!(create_island(&mut board, from, to));
+        assert!(create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
     }
 
     #[test]
@@ -412,12 +363,12 @@ mod test
         let from = (1, 0, -1);
         let to = (2, -1, -1);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         let from = (1, 0, -1);
         let to = (3, -1, -2);
 
-        assert!(create_island(&mut board, from, to));
+        assert!(create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
     }
 
     #[test]
@@ -455,17 +406,17 @@ mod test
         let from = (0, 0, 0);
         let to = (1, 0, -1);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 
-        assert!(!create_island(&mut board, from, to));
+        assert!(!create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
 
         board.remove((2, 1, -3));
         let from = (-1, -2, 3);
         let to = (-2, -1, 3);
 
-        assert!(create_island(&mut board, from, to));
+        assert!(create_island(&mut board, from, to, &mut Vec::new(), &mut Vec::new()));
     }
 }
