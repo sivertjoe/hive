@@ -15,7 +15,7 @@ services:
       - "db"
     build:
       context: .
-      dockerfile: Dockerfile.server
+      dockerfile: .docker/Dockerfile.server
     ports:
       - '5000:5000'
       - '5001:5001'
@@ -23,7 +23,7 @@ services:
   website:
     build:
       context: .
-      dockerfile: Dockerfile.website
+      dockerfile: .docker/Dockerfile.website
     ports:
       - '8000:8000'
 
