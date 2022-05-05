@@ -268,7 +268,7 @@ pub fn view_board(model: &Model) -> Node<crate::Msg> {
 pub fn view_pieces(model: &Model) -> Node<crate::Msg> {
     div![model.gridv3.iter().filter_map(|hex| {
         hex.pieces
-            .first()
+            .last()
             .map(|p| piece_to_node(model, p, hex.to_pixels()))
     })]
 }
