@@ -14,7 +14,7 @@ pub async fn create_game(req: Request<Body>, state: State) -> Response<Body>
 
             match database::create_game(state.db(), id).await
             {
-                Ok(()) => Response::new(create(())),
+                Ok(_) => Response::new(create(())),
                 Err(e) => Response::new(error(e)),
             }
         },
