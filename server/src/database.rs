@@ -119,7 +119,7 @@ async fn count_create_game(db: Database, id: &ObjectId) -> DatabaseResult<u32>
     }
 }
 
-pub async fn create_game(db: Database, user_id: ObjectId) -> DatabaseResult<()>
+pub async fn create_game(db: Database, user_id: ObjectId) -> DatabaseResult<ObjectId>
 {
     let col = db.collection::<User>(USERS);
 
@@ -129,11 +129,13 @@ pub async fn create_game(db: Database, user_id: ObjectId) -> DatabaseResult<()>
     }
 
     let user = doc! { "_id": &user_id };
-    let update = doc! { "$push": { "create_games": ObjectId::new() } };
+
+    let id = ObjectId::new();
+    let update = doc! { "$push": { "create_games": id.clone() } };
 
     match col.update_one(user, update, None).await
     {
-        Ok(_) => Ok(()),
+        Ok(_) => Ok(id),
         Err(e) => Err(e.into()),
     }
 }
@@ -550,14 +552,10 @@ mod test
         let guard = get_guard().await?;
         let creator = reg(&guard, "sivert".into()).await?;
 
-        assert!(create_game(guard.db(), creator.clone()).await.is_ok());
-
-        let uuid = reg(&guard, "sofie".into()).await?;
-        let games = home(guard.db(), uuid).await?;
-        let game = games[0].games[0].clone();
+        let create_id = create_game(guard.db(), creator.clone()).await?;
 
         assert_eq!(find_user_by_id(guard.db(), creator.clone()).await?.create_games.len(), 1);
-        assert!(remove_user_create_game(guard.db(), &creator, &game).await.is_ok());
+        assert!(remove_user_create_game(guard.db(), &creator, &create_id).await.is_ok());
 
         assert_eq!(find_user_by_id(guard.db(), creator.clone()).await?.create_games.len(), 0);
 
@@ -572,16 +570,14 @@ mod test
         let guard = get_guard().await?;
 
         let creator = reg(&guard, "sivert".into()).await?;
-        assert!(create_game(guard.db(), creator.clone()).await.is_ok());
+        let create_id = create_game(guard.db(), creator.clone()).await?;
 
         let id = reg(&guard, "sofie".into()).await?;
-        let games = home(guard.db(), id.clone()).await?;
-        let game = games[0].games[0].clone();
 
         let form = CreateGameFormResponse {
             creator: creator.clone(),
-            user: id.clone(),
-            game,
+            user:    id.clone(),
+            game:    create_id,
         };
 
         assert!(accept_game(guard.db(), form).await.is_ok());
@@ -602,16 +598,14 @@ mod test
         let guard = get_guard().await?;
 
         let creator = reg(&guard, "sivert".into()).await?;
-        assert!(create_game(guard.db(), creator.clone()).await.is_ok());
+        let create_id = create_game(guard.db(), creator.clone()).await?;
 
         let uuid = reg(&guard, "sofie".into()).await?;
-        let games = home(guard.db(), uuid.clone()).await?;
-        let game = games[0].games[0].clone();
 
         let form = CreateGameFormResponse {
             creator: creator.clone(),
-            user: uuid.clone(),
-            game,
+            user:    uuid.clone(),
+            game:    create_id,
         };
 
         assert!(accept_game(guard.db(), form).await.is_ok());
