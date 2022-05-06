@@ -190,8 +190,14 @@ pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> Database
 
     let players = if byte[0] >= 128 { [creator, user] } else { [user, creator] };
 
+    let (u1, u2) = tokio::join!(
+        find_user_by_id(db.clone(), players[0].clone()),
+        find_user_by_id(db.clone(), players[1].clone())
+    );
+    let users = [u1?, u2?];
+
     let id = games
-        .insert_one(Game::new(players), None)
+        .insert_one(Game::new(users), None)
         .await?
         .inserted_id
         .as_object_id()
@@ -233,28 +239,6 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
 {
     let col = db.collection::<Game>(GAMES);
 
-    /* Explanation:
-     * First, fetch all games that are ongoing
-     * Then, do a lookup, aka (SQL) join. The syntax is
-     *
-     * from: join from which collection
-     * localField: the field in the main collection you want to join on
-     * foreignField: the key in to OTHER collection you want to join on
-     * as: (evt) rename the thing
-     *
-     * However, the lookup gives us the whole users object, aka
-     * "players": [
-     * {"_id": "...",
-     * "name, "Sivert"},
-     * {"_id": "...",
-     * "name": "Bernt"}]
-     *
-     * And we _only_ want the names.
-     *
-     * Therefore, we do a project where we `snatch` _only_ the player name out of
-     * the object
-     *
-     */
 
     Ok(col
         .aggregate(
@@ -262,14 +246,6 @@ pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
                 doc! {
                     "$match": {
                         "complete": false
-                    }
-                },
-                doc! {
-                    "$lookup": {
-                        "from": USERS,
-                        "localField": "players",
-                        "foreignField": "_id",
-                        "as": "players"
                     }
                 },
                 doc! {
@@ -301,14 +277,6 @@ pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<GameRe
                 "$match": { "_id": &id }
             },
             doc! {
-                "$lookup": {
-                    "from": USERS,
-                    "localField": "players",
-                    "foreignField": "_id",
-                    "as": "players"
-                }
-            },
-            doc! {
                 "$project": {
                     "players": "$players.name",
                     "board": "$board",
@@ -334,8 +302,9 @@ pub async fn play_move(db: Database, r#move: Move) -> DatabaseResult<()>
     let col = db.collection::<Game>(GAMES);
 
     let query = doc! {
-    "_id": r#move.game_id,
-    "players": { "$in": [&r#move.player_id] }};
+        "_id": r#move.game_id,
+        "players._id": &r#move.player_id,
+    };
 
     let mut game =
         col.find_one(query.clone(), None).await?.ok_or(DatabaseError::NoDocumentFound)?;
