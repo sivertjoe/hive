@@ -283,6 +283,7 @@ pub async fn get_game_by_id(db: Database, id: ObjectId) -> DatabaseResult<GameRe
                     "players": "$players.name",
                     "board": "$board",
                     "complete": "$complete",
+                    "move_list": "$move_list",
                 }
             },
         ],
@@ -310,7 +311,9 @@ pub async fn play_move(db: Database, r#move: Move) -> DatabaseResult<()>
 
     let mut game =
         col.find_one(query.clone(), None).await?.ok_or(DatabaseError::NoDocumentFound)?;
-    game.board.play_move(r#move);
+
+    game.board.play_move(r#move.clone());
+    game.move_list.push(r#move.into());
 
     col.replace_one(query, game, None).await.map(|_| ()).map_err(|e| e.into())
 }
@@ -660,6 +663,7 @@ mod test
         let game = get_game_by_id(guard.db(), game_id).await?;
         assert_eq!(game.board.len(), 1);
         assert_eq!(game.board.turns, 1);
+        assert_eq!(game.move_list.len(), 1);
 
         Ok(())
     }

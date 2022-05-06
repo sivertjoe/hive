@@ -1,15 +1,16 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
-use shared::model::Board;
+use shared::model::{Board, InternalMove};
 
 use super::user::User;
 
 #[derive(Serialize, Deserialize)]
 pub struct Game
 {
-    players:   [Player; 2],
-    complete:  bool,
-    pub board: Board,
+    players:       [Player; 2],
+    complete:      bool,
+    pub board:     Board,
+    pub move_list: Vec<InternalMove>,
 }
 
 impl Game
@@ -29,7 +30,10 @@ impl Game
         };
 
         Self {
-            players: get_players(users), complete: false, board: Board::default()
+            players:   get_players(users),
+            complete:  false,
+            board:     Board::default(),
+            move_list: Vec::new(),
         }
     }
 }
