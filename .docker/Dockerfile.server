@@ -1,0 +1,14 @@
+FROM sivertjoe/hive_server-base:latest AS builder
+
+WORKDIR /
+COPY server server
+COPY shared shared
+WORKDIR server
+
+RUN cargo build --target x86_64-unknown-linux-musl --release
+
+FROM scratch
+
+COPY --from=builder server/target/x86_64-unknown-linux-musl/release/server .
+
+CMD ["./server"]
