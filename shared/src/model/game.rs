@@ -17,6 +17,25 @@ pub struct Move
     pub old_sq:    Option<Square>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct InternalMove
+{
+    pub piece:  Piece,
+    pub sq:     Square,
+    pub old_sq: Option<Square>,
+}
+
+impl From<Move> for InternalMove
+{
+    fn from(r#move: Move) -> Self
+    {
+        Self {
+            piece: r#move.piece, sq: r#move.sq, old_sq: r#move.old_sq
+        }
+    }
+}
+
+
 #[derive(Serialize, Deserialize)]
 pub struct OnGoingGame
 {
@@ -28,9 +47,10 @@ pub struct OnGoingGame
 #[derive(Serialize, Deserialize)]
 pub struct GameResource
 {
-    pub _id:     ObjectId,
-    pub players: [Name; 2],
-    pub board:   Board,
+    pub _id:       ObjectId,
+    pub players:   [Name; 2],
+    pub board:     Board,
+    pub move_list: Vec<InternalMove>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
