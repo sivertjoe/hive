@@ -1,0 +1,15 @@
+FROM mvlabat/wasm-pack as builder
+
+WORKDIR /
+COPY frontend frontend
+COPY shared shared
+WORKDIR frontend
+RUN wasm-pack build --target web --out-name package
+
+FROM robertohuertasm/microserver:v0.2.0
+
+COPY --from=builder frontend/pkg .
+COPY --from=builder frontend/public .
+COPY --from=builder frontend/index.html .
+
+CMD microserver --port 8000
