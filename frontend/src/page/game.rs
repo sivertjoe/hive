@@ -142,6 +142,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::SentMove(resp) => {
             if let Err(e) = parse_resp(resp) {
                 model.label = Some(format!("{e:?}"));
+            } else if game_complete(model) {
+                let id = model.game.as_ref().unwrap()._id;
+                orders.perform_cmd(async move { Msg::CompleteGame(complete_game(id).await) });
             }
         }
         Msg::CompleteGame(resp) => {
@@ -232,12 +235,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     ) {
                         orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                     }
-
-                    if game_complete(model) {
-                        let id = model.game.as_ref().unwrap()._id;
-                        orders
-                            .perform_cmd(async move { Msg::CompleteGame(complete_game(id).await) });
-                    }
                 } else {
                     place_piece_back(model, selected_piece);
                 }
@@ -299,11 +296,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     model.radius = rad;
                     model.gridv3 = create_gridv3(rad);
                     grid_from_board(model);
-                }
-
-                if game_complete(model) {
-                    let id = model.game.as_ref().unwrap()._id;
-                    orders.perform_cmd(async move { Msg::CompleteGame(complete_game(id).await) });
                 }
             }
 
