@@ -666,4 +666,21 @@ mod test
 
         Ok(())
     }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_game_is_completed() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+
+        let (_, _, game_id) = create_users_and_game(&guard).await?;
+
+        let available_games_len1 = get_active_games(guard.db()).await?.len();
+        complete_game(guard.db(), game_id).await?;
+        let available_games_len2 = get_active_games(guard.db()).await?.len();
+
+        assert_eq!(available_games_len1, 1);
+        assert_eq!(available_games_len2, 0);
+
+        Ok(())
+    }
 }
