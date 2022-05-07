@@ -5,7 +5,8 @@ use shared::model::Move;
 use super::{bad_request, error, get_body, method_not_allowed, ok};
 use crate::{
     database::{
-        complete_game, get_active_games, get_game_by_id, play_move, DatabaseError::GameNotComplete,
+        complete_game, get_active_games, get_game_by_id, get_old_games, get_users_games, play_move,
+        DatabaseError::GameNotComplete,
     },
     State,
 };
@@ -22,7 +23,25 @@ async fn get(req: Request<Body>, state: State) -> Response<Body>
                 let res = get_active_games(state.db()).await.unwrap();
                 Response::new(ok(res))
             },
+
+            Query::Old =>
+            {
+                let res = get_old_games(state.db()).await.unwrap();
+                Response::new(ok(res))
+            },
+
             Query::Id(object_id) => match get_game_by_id(state.db(), object_id).await
+            {
+                Ok(res) => Response::new(ok(res)),
+
+                Err(e) =>
+                {
+                    println!("err");
+                    Response::new(error(e))
+                },
+            },
+
+            Query::User(object_id) => match get_users_games(state.db(), object_id).await
             {
                 Ok(res) => Response::new(ok(res)),
 
@@ -95,7 +114,9 @@ pub async fn game(req: Request<Body>, state: State) -> Response<Body>
 enum Query
 {
     All,
+    Old,
     Id(ObjectId),
+    User(ObjectId),
 }
 
 use std::str::FromStr;
@@ -111,14 +132,28 @@ impl FromStr for Query
             return Err(());
         }
 
-        match &s[2..]
+        if s.starts_with("q=user")
         {
-            "all" => Ok(Query::All),
-            s => match ObjectId::parse_str(s)
+            // get the string s within "q=user(s)""
+            let id = &s[7..s.len() - 1];
+            match ObjectId::parse_str(id)
             {
-                Ok(id) => Ok(Query::Id(id)),
+                Ok(id) => Ok(Query::User(id)),
                 _ => Err(()),
-            },
+            }
+        }
+        else
+        {
+            match &s[2..]
+            {
+                "all" => Ok(Query::All),
+                "old" => Ok(Query::Old),
+                s => match ObjectId::parse_str(s)
+                {
+                    Ok(id) => Ok(Query::Id(id)),
+                    _ => Err(()),
+                },
+            }
         }
     }
 }

@@ -236,6 +236,70 @@ pub async fn home(db: Database, id: ObjectId) -> DatabaseResult<Vec<CreateGameCh
         .await)
 }
 
+
+pub async fn get_old_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
+{
+    let col = db.collection::<Game>(GAMES);
+
+    Ok(col
+        .aggregate(
+            [
+                doc! {
+                    "$match": {
+                        "complete": true
+                    }
+                },
+                doc! {
+                    "$project": {
+                        "players": "$players.name",
+                        "game_object_id": "$_id",
+                    }
+                },
+            ],
+            None,
+        )
+        .await?
+        .map(|doc| {
+            let doc = doc.unwrap();
+            let g: OnGoingGame = bson::from_document(doc).unwrap();
+            g
+        })
+        .collect()
+        .await)
+}
+
+pub async fn get_users_games(db: Database, id: ObjectId) -> DatabaseResult<Vec<OnGoingGame>>
+{
+    let col = db.collection::<Game>(GAMES);
+
+    Ok(col
+        .aggregate(
+            [
+                doc! {
+                    "$match": {
+                        "players._id":  id,
+                        "complete": false,
+                    }
+                },
+                doc! {
+                    "$project": {
+                        "players": "$players.name",
+                        "game_object_id": "$_id",
+                    }
+                },
+            ],
+            None,
+        )
+        .await?
+        .map(|doc| {
+            let doc = doc.unwrap();
+            let g: OnGoingGame = bson::from_document(doc).unwrap();
+            g
+        })
+        .collect()
+        .await)
+}
+
 pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
 {
     let col = db.collection::<Game>(GAMES);
@@ -403,16 +467,16 @@ mod test
         register_user(guard.db(), cred).await
     }
 
-    async fn create_users_and_game(guard: &Guard)
-        -> DatabaseResult<(ObjectId, ObjectId, ObjectId)>
+    async fn create_users_and_game_name(
+        guard: &Guard,
+        name1: &str,
+        name2: &str,
+    ) -> DatabaseResult<(ObjectId, ObjectId, ObjectId)>
     {
-        let u1 = reg(guard, "sivert".into()).await?;
-        let u2 = reg(guard, "sofie".into()).await?;
+        let u1 = reg(guard, name1.into()).await?;
+        let u2 = reg(guard, name2.into()).await?;
 
-        create_game(guard.db(), u1.clone()).await?;
-
-        let games = home(guard.db(), u2.clone()).await?;
-        let game = games[0].games[0].clone();
+        let game = create_game(guard.db(), u1.clone()).await?;
 
         let form = CreateGameFormResponse {
             creator: u1.clone(),
@@ -423,6 +487,12 @@ mod test
         let game = accept_game(guard.db(), form).await?.object_id;
 
         Ok((u1, u2, game))
+    }
+
+    async fn create_users_and_game(guard: &Guard)
+        -> DatabaseResult<(ObjectId, ObjectId, ObjectId)>
+    {
+        create_users_and_game_name(guard, "sivert", "sofie").await
     }
 
 
@@ -680,6 +750,24 @@ mod test
 
         assert_eq!(available_games_len1, 1);
         assert_eq!(available_games_len2, 0);
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_users_games() -> Result<(), DatabaseError>
+    {
+        let guard = get_guard().await?;
+
+        let name = "u1";
+        let (u1, _, _) = create_users_and_game_name(&guard, name, "u2").await?;
+        let (_, _, _) = create_users_and_game_name(&guard, "y1", "y2").await?;
+        let (_, _, _) = create_users_and_game_name(&guard, "x1", "x2").await?;
+
+        let games = get_users_games(guard.db(), u1).await?;
+
+        assert_eq!(games.len(), 1);
+        assert!(games[0].players.iter().any(|n| n == name));
 
         Ok(())
     }
