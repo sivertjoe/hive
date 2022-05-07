@@ -236,7 +236,6 @@ pub async fn home(db: Database, id: ObjectId) -> DatabaseResult<Vec<CreateGameCh
         .await)
 }
 
-//TODO: Whats the point of the uuid? just use the _id
 pub async fn get_active_games(db: Database) -> DatabaseResult<Vec<OnGoingGame>>
 {
     let col = db.collection::<Game>(GAMES);
