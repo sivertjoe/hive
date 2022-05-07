@@ -81,13 +81,28 @@ code {
 
 
 td {
-    padding-top: 5;
-    font-size: 1.5rem;
-    width: 50%;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+tbody {
+  display:block;
+  max-height: 300px;
+  overflow:auto;
+}
+thead, tbody tr {
+  display:table;
+  width:100%;
+  table-layout:fixed;
+}
+
+tbody tr {
+  table-layout: fixed;
+  width: 100%;
+  height: 100%;
 }
 
 .challenge-table {
-  width: 50%;
   margin: auto auto;
   text-align: center;
   border: solid 1px var(--primary-color);
@@ -196,4 +211,11 @@ piece {
 
 .spider.black {
     background-image: url(/public/svg/hive-spider-black.svg);
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: 50% 50%;
+  grid-template-rows: 50% 50%;
+  grid-gap: 30px;
 }

@@ -5,19 +5,23 @@ use shared::model::{
 };
 use shared::ObjectId;
 
+use crate::request::home::*;
 use crate::Msg::Home;
+
+#[derive(Default)]
 pub struct Model {
     available_games: Vec<CreateGameChallenge>,
     label: Option<String>,
     ongoing_games: Vec<OnGoingGame>,
+    old_games: Vec<OnGoingGame>,   // Shh
+    users_games: Vec<OnGoingGame>, // Shh
 }
-
-use crate::request::home::*;
 
 pub fn init(orders: &mut impl Orders<Msg>) -> Model {
     orders
         .skip()
         .perform_cmd(async { Msg::FetchedAvailableGames(get_all_games().await) })
+        .perform_cmd(async { Msg::FetchedOldGames(get_old_games().await) })
         .perform_cmd(async {
             let id: Result<ObjectId, _> = LocalStorage::get("id");
             if let Ok(id) = id {
@@ -25,13 +29,17 @@ pub fn init(orders: &mut impl Orders<Msg>) -> Model {
             } else {
                 Msg::FetchedCreateGame(send_message("noid", "home", Method::Post).await)
             }
+        })
+        .perform_cmd(async {
+            let id: Result<ObjectId, _> = LocalStorage::get("id");
+            if let Ok(id) = id {
+                Msg::FetchedUsersGames(get_users_games(id.to_string()).await)
+            } else {
+                Msg::FetchedUsersGames(get_users_games("noid".to_string()).await)
+            }
         });
 
-    Model {
-        available_games: Vec::new(),
-        label: None,
-        ongoing_games: Vec::new(),
-    }
+    Model::default()
 }
 
 fn challenge_from_bundle(bundle: Vec<CreateGameChallengeBundle>) -> Vec<CreateGameChallenge> {
@@ -57,11 +65,44 @@ pub enum Msg {
     FetchedCreateGame(fetch::Result<String>),
     AcceptGame { game: ObjectId, creator: ObjectId },
     AcceptedGame(fetch::Result<String>),
+
     FetchedAvailableGames(fetch::Result<String>),
+    FetchedOldGames(fetch::Result<String>),
+    FetchedUsersGames(fetch::Result<String>),
 }
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
+    let parse_resp = |resp: fetch::Result<String>| -> Result<ResponseBody, String> {
+        resp.map_err(|e| format!("{e:?}"))
+            .and_then(|text| {
+                serde_json::from_str::<ResponseBody>(&text).map_err(|e| format!("{e:?}"))
+            })
+            .and_then(|resp| {
+                if resp.status == 200 {
+                    Ok(resp)
+                } else {
+                    Err("wrong statuscode".into())
+                }
+            })
+    };
+
     match msg {
+        Msg::FetchedOldGames(text) => match parse_resp(text) {
+            Ok(resp) => {
+                let games: Vec<OnGoingGame> = resp.get_body();
+                model.old_games = games;
+            }
+            Err(e) => model.label = Some(e),
+        },
+
+        Msg::FetchedUsersGames(text) => match parse_resp(text) {
+            Ok(resp) => {
+                let games: Vec<OnGoingGame> = resp.get_body();
+                model.users_games = games;
+            }
+            Err(_) => {}
+        },
+
         Msg::FetchedCreateGame(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text) {
             Ok(resp) => match resp.status {
                 200 => {
@@ -166,11 +207,13 @@ fn available_games<Ms: 'static>(model: &Model) -> Node<Ms> {
         h1!["Available Games!"],
         table![
             C!("challenge-table"),
-            tr![th!["Challenger"], th!["Accept"],],
-            model
-                .available_games
-                .iter()
-                .map(|game| { tr![td![&game.name], td![challenge(game)]] })
+            thead![tr![th!["Challenger"], th!["Accept"]]],
+            tbody![
+                model
+                    .available_games
+                    .iter()
+                    .map(|game| { tr![td![&game.name], td![challenge(game)]] })
+            ]
         ]
     ]
 }
@@ -187,19 +230,42 @@ fn ongoing_game<Ms: 'static>(game: &OnGoingGame) -> Node<Ms> {
     ]
 }
 
-fn ongoing_games<Ms: 'static>(model: &Model) -> Option<Node<Ms>> {
-    IF!(!model.ongoing_games.is_empty() => {
-        div![
-    h1!["Ongoing Games!"],
-    table![
-        C!("challenge-table"),
-        model
-            .ongoing_games
-            .iter()
-            .map(|game| { ongoing_game(game) })
-    ]
+fn ongoing_games<Ms: 'static>(model: &Model) -> Node<Ms> {
+    div![
+        h1!["Ongoing games!"],
+        table![
+            C!("challenge-table"),
+            thead![tr![th!["White"], th!["Black"]]],
+            tbody![
+                model
+                    .ongoing_games
+                    .iter()
+                    .map(|game| { ongoing_game(game) })
+            ]
         ]
-    })
+    ]
+}
+
+fn old_games<Ms: 'static>(model: &Model) -> Node<Ms> {
+    div![
+        h1!["Old games!"],
+        table![
+            C!("challenge-table"),
+            thead![tr![th!["White"], th!["Black"]]],
+            tbody![model.old_games.iter().map(|game| { ongoing_game(game) })]
+        ]
+    ]
+}
+
+fn users_games<Ms: 'static>(model: &Model) -> Node<Ms> {
+    div![
+        h1!["Your games!"],
+        table![
+            C!("challenge-table"),
+            thead![tr![th!["White"], th!["Black"]]],
+            tbody![model.users_games.iter().map(|game| { ongoing_game(game) })]
+        ]
+    ]
 }
 
 fn label<Ms: 'static>(model: &Model) -> Option<Node<Ms>> {
@@ -212,10 +278,13 @@ fn label<Ms: 'static>(model: &Model) -> Option<Node<Ms>> {
 pub fn view<Ms: 'static>(model: &Model) -> Node<Ms> {
     div![
         C!("container"),
-        available_games(model),
-        br!(),
-        br!(),
-        ongoing_games(model),
+        div![
+            C!("grid-container"),
+            available_games(model),
+            ongoing_games(model),
+            users_games(model),
+            old_games(model),
+        ],
         label(model),
     ]
 }
