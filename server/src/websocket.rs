@@ -134,17 +134,13 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
 
             res = ws.next() =>
             {
-                if let Some(msg) = res
+                match res
                 {
-                    match msg
-                    {
-                        Ok(Pong(_)) => {
-                            println!("RECEIVED PONG");
-                        }, // Woo
-                        _ => break,
-                    }
+                    Some(Ok(Pong(_))) => {
+                        println!("RECEIVED PONG");
+                    },
+                    _ => break,
                 }
-
             }
 
             msg = rx.recv() => {
