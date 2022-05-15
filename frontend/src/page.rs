@@ -14,7 +14,7 @@ pub enum Page {
     Login(login::Model),
     Register(register::Model),
     Create(create::Model),
-    Game(game::Model),
+    Game(Box<game::Model>),
 
     NotFound,
 }
@@ -27,7 +27,7 @@ impl Page {
             Some("register") => register::init(url).map_or(Self::NotFound, Self::Register),
             Some("create") => Self::Create(create::init()),
             Some("game") => game::init(url, &mut orders.proxy(crate::Msg::Game))
-                .map_or(Self::NotFound, Self::Game),
+                .map_or(Self::NotFound, |o| Self::Game(Box::new(o))),
             Some(_) => Self::NotFound,
         }
     }
