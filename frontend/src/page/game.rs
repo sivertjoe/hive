@@ -1,11 +1,13 @@
 mod hex;
 mod menu;
 mod selected_piece;
+mod selector;
 mod util;
 
 use hex::*;
 use menu::*;
 use selected_piece::*;
+use selector::*;
 use util::*;
 
 use crate::request::game::*;
@@ -14,9 +16,43 @@ use seed::{self, prelude::*, *};
 use shared::{model::*, r#move::*, ObjectId};
 use web_sys::{Event, SvgGraphicsElement};
 
+pub struct ReplayBoard {
+    pub board: Box<Board>,
+    pub dir: Selector,
+}
+
+impl ReplayBoard {
+    pub fn new(model: &Model) -> Option<Self> {
+        let board = Box::new(model.game.as_ref().unwrap().board.clone());
+
+        model
+            .game
+            .as_ref()
+            .unwrap()
+            .move_list
+            .len()
+            .checked_sub(1)
+            .map(|max| {
+                let dir = Selector {
+                    index: max,
+                    max,
+                    dir: None,
+                };
+
+                Self { board, dir }
+            })
+    }
+
+    fn get_and_update_index(&mut self, dir: Key) -> Option<usize> {
+        self.dir.get_and_update_index(dir)
+    }
+}
+
 #[derive(Default)]
 pub struct Model {
     pub game: Option<GameResource>,
+    pub replay_board: Option<ReplayBoard>,
+
     pub gridv3: Vec<Hex>,
     pub piece: Option<SelectedPiece>,
     pub svg: ElRef<SvgGraphicsElement>,
@@ -42,6 +78,10 @@ fn gen_size(n: f32) -> String {
 }
 
 pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
+    orders.stream(streams::window_event(Ev::KeyDown, |event| {
+        Msg::ButtonPress(event)
+    }));
+
     // TODO: Figure this out
     match url.next_path_part() {
         Some(id) => match ObjectId::parse_str(id) {
@@ -62,6 +102,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 
                 Some(Model {
                     game: None,
+                    replay_board: None,
                     gridv3: create_gridv3(DEFAULT_RAD),
                     menu: None,
                     svg: ElRef::default(),
@@ -98,6 +139,7 @@ pub enum Msg {
     Place((String, Event)),
     Drag(Piece),
     MouseUp(Event),
+    ButtonPress(Event),
 }
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -116,6 +158,20 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     };
 
     match msg {
+        Msg::ButtonPress(event) => {
+            let key = to_keyboard_event(&event);
+            use std::str::FromStr;
+
+            match Key::from_str(key.code().as_str()) {
+                Ok(key) => {
+                    event.prevent_default();
+                    event.stop_propagation();
+
+                    replay_move(model, key);
+                }
+                _ => {}
+            }
+        }
         Msg::Open => {
             log("OPEN");
         }
@@ -128,14 +184,15 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 if !just_my_move(model, &r#move) {
                     let rad = sq_radius(r#move.sq);
                     play_move(model, r#move);
+
+
                     if rad > model.radius {
                         model.radius = rad;
                         model.gridv3 = create_gridv3(rad);
                         grid_from_board(model);
                     }
-                } else {
-                    log("IGNORE");
                 }
+                clear_replay(model);
             }
         }
 
@@ -213,26 +270,20 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             if let Some(selected_piece) = model.piece.take() {
                 if legal_move(model, sq) {
                     // Place the piece
-                    get_hex_from_square(model, sq)
-                        .unwrap()
-                        .place_piece(selected_piece.piece);
-
-                    let board = get_board_mut(model).unwrap();
-                    board.place_piece(selected_piece.piece, sq, Some(selected_piece.old_square));
-
-                    let rad = get_radius(model);
-                    if rad > model.radius {
-                        model.radius = rad;
-                        model.gridv3 = create_gridv3(rad);
-                        grid_from_board(model);
-                    }
-
                     if let Some(r#move) = get_move(
                         model,
                         selected_piece.piece,
                         sq,
                         Some(selected_piece.old_square),
                     ) {
+                        play_move(model, r#move.clone());
+                        let rad = get_radius(model);
+                        if rad > model.radius {
+                            model.radius = rad;
+                            model.gridv3 = create_gridv3(rad);
+                            grid_from_board(model);
+                        }
+
                         orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                     }
                 } else {
@@ -241,7 +292,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
                 clear_highlighs(model);
                 model.legal_moves_cache = None;
-                //clear_red(model);
             }
         }
 
@@ -252,6 +302,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let my_turn = legal_turn(model);
             let correct_piece = legal_piece(model);
 
+            if model.piece.is_some() {
+                clear_replay(model);
+            }
             if let Some(sel) = model.piece.as_mut() {
                 sel.x = x;
                 sel.y = y;
@@ -280,15 +333,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let r#type: BoardPiece = id.into();
                 let color = model.color.unwrap();
                 let piece = Piece { r#type, color };
-                place_piece(model, piece, sq);
 
                 model.menu.as_mut().unwrap().reduce_piece(r#type);
 
-                if let Some(ref mut b) = get_board_mut(model) {
-                    b.place_piece(piece, sq, None);
-                }
 
                 if let Some(r#move) = get_move(model, piece, sq, None) {
+                    play_move(model, r#move.clone());
                     orders.perform_cmd(async move { Msg::SentMove(send_move(r#move).await) });
                 }
                 let rad = get_radius(model);
@@ -309,8 +359,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let board = &mut model.game.as_mut().unwrap().board;
                 if model.legal_moves_cache.is_none() {
                     model.legal_moves_cache = Some(legal_moves(&piece, board, None));
-                    log("!!?");
                 }
+                clear_replay(model);
                 set_highlight(model, true);
             }
         }

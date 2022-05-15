@@ -104,8 +104,30 @@ impl Board
 
     pub fn play_move(&mut self, r#move: Move)
     {
-        // Have logic to check for legal move here
+        self.play_move_(r#move.into());
+    }
+
+    pub fn play_move_(&mut self, r#move: InternalMove)
+    {
         self.place_piece(r#move.piece, r#move.sq, r#move.old_sq);
+    }
+
+    pub fn unplay_move(&mut self, r#move: InternalMove)
+    {
+        let bs = self.board.get_mut(&r#move.sq).unwrap();
+        let p = bs.remove_piece().unwrap();
+
+        if let Some(old) = r#move.old_sq
+        {
+            if let Some(ref mut bs) = self.board.get_mut(&old)
+            {
+                bs.place_piece(p);
+            }
+            else
+            {
+                self.board.insert(old, BoardSquare::new(p));
+            }
+        }
     }
 
     pub fn un_play_from_to(&mut self, from: Square, to: Square)
