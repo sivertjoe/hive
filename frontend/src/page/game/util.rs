@@ -30,7 +30,9 @@ pub fn play_move(model: &mut Model, r#move: Move) {
         }
     }
     place_piece(model, r#move.piece, r#move.sq);
-    get_board_mut(model).unwrap().play_move(r#move);
+
+    get_board_mut(model).unwrap().play_move(r#move.clone());
+    model.game.as_mut().unwrap().move_list.push(r#move.into());
 }
 
 pub fn get_mouse_pos(model: &Model, mm: &MouseEvent) -> (f32, f32) {
@@ -125,9 +127,20 @@ pub fn get_color(game: &GameResource) -> Option<Color> {
 }
 
 pub fn grid_from_board(model: &mut Model) {
-    for (&sq, board_square) in model.game.as_ref().unwrap().board.iter() {
+    let board = &model.game.as_ref().unwrap().board;
+    let mut grid = &mut model.gridv3;
+
+    grid_from_board_(&mut grid, &board);
+}
+
+pub fn grid_from_board_(grid: &mut Vec<Hex>, board: &Board) {
+    for hex in grid.iter_mut() {
+        hex.pieces.clear();
+    }
+
+    for (&sq, board_square) in board.iter() {
         for piece in &board_square.pieces {
-            let hex = model.gridv3.iter_mut().find(|hex| hex.sq() == sq).unwrap();
+            let hex = grid.iter_mut().find(|hex| hex.sq() == sq).unwrap();
             hex.place_piece(*piece);
         }
     }
@@ -271,4 +284,52 @@ pub fn view_pieces(model: &Model) -> Node<crate::Msg> {
             .last()
             .map(|p| piece_to_node(model, p, hex.to_pixels()))
     })]
+}
+
+#[derive(Clone, Copy)]
+pub enum Key {
+    Left,
+    Right,
+}
+
+use std::str::FromStr;
+impl FromStr for Key {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ArrowLeft" => Ok(Self::Left),
+            "ArrowRight" => Ok(Self::Right),
+            _ => Err(()),
+        }
+    }
+}
+
+pub fn replay_move(model: &mut Model, key: Key) {
+    if model.replay_board.is_none() {
+        model.replay_board = ReplayBoard::new(model);
+    }
+
+    if let Some(replay) = model.replay_board.as_mut() {
+        if let Some(index) = replay.get_and_update_index(key) {
+            let m = model.game.as_ref().unwrap().move_list[index].clone();
+
+            match key {
+                Key::Left => {
+                    replay.board.unplay_move(m);
+                }
+                Key::Right => {
+                    replay.board.play_move_(m);
+                }
+            };
+
+            grid_from_board_(&mut model.gridv3, &replay.board);
+        }
+    }
+}
+
+pub fn clear_replay(model: &mut Model) {
+    if model.replay_board.is_some() {
+        model.replay_board = None;
+        grid_from_board(model);
+    }
 }
