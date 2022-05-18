@@ -91,7 +91,7 @@ impl Hex {
 
         let (fill, opacity) = match (self.red, self.selected) {
             (true, _) => ("red", "0.5"),
-            (_, true) => ("grey", "1.0"),
+            (_, true) => ("grey", "0.7"),
             _ => ("transparent", "1.0"),
         };
 
