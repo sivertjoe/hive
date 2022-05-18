@@ -1,3 +1,4 @@
+use super::can_fit;
 use crate::{
     model::*,
     r#move::{neighbors, square_has_neighbors},
@@ -29,6 +30,7 @@ fn _spider_move(
             && board.empty_square(&dt)
             && square_has_neighbors(dt, board, origin)
             && common_neighbors(sq, dt)
+            && can_fit(sq, dt, board)
         {
             if level == 2 && !fin.contains(&dt)
             {
@@ -52,10 +54,13 @@ pub fn spider_move(board: &Board, sq: Square) -> Vec<Square>
         [(0, 1, -1), (1, 0, -1), (1, -1, 0), (0, -1, 1), (-1, 0, 1), (-1, 1, 0)];
 
 
+    let mut board = board.clone();
+    let _ = board.remove(sq);
+
     let mut fin = Vec::new();
 
-    _spider_move(&mut fin, RIGHT, board, sq, 0, sq, Vec::new());
-    _spider_move(&mut fin, LEFT, board, sq, 0, sq, Vec::new());
+    _spider_move(&mut fin, RIGHT, &board, sq, 0, sq, Vec::new());
+    _spider_move(&mut fin, LEFT, &board, sq, 0, sq, Vec::new());
 
     fin
 }
@@ -151,5 +156,43 @@ mod test
         legal_moves.sort();
 
         assert_eq!(legal_moves, ans);
+    }
+
+    #[test]
+    fn test_spider_move_cant_fit()
+    {
+        let mut board = Board::default();
+
+        //let spider_square = (-1, 1, 0);
+        let spider_square = (1, 2, -3);
+        let spider = Piece::new(BoardPiece::Spider, Color::White);
+
+
+
+        let pos = [
+            (2, -1, -1),
+            (1, 0, -1),
+            (0, 1, -1),
+            (0, 2, -2),
+            (2, 1, -3),
+            (3, 0, -3),
+            (3, -2, -1),
+            (4, -1, -3),
+        ];
+
+
+        let iter = pos
+            .into_iter()
+            .map(|pos| (pos, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))))
+            .chain(std::iter::once((spider_square, BoardSquare::new(spider.clone()))));
+
+
+
+        board.from_iter(iter);
+        board.turns = 10;
+
+        let legal_moves = spider_move(&board, spider_square);
+
+        assert!(!legal_moves.contains(&(3, -1, -2)));
     }
 }
