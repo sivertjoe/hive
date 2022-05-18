@@ -89,20 +89,22 @@ pub async fn spawn_web_socket_server(mut rx: mpsc::Receiver<Message>)
                }
             },
 
-            res = listener.accept()=> {
-                if res.is_err() { return; }
-                let (stream, _) = res.unwrap();
+            res = listener.accept() => {
 
-                let res = get_websocket_and_uri(stream).await;
-                if res.is_err() { return; }
-                let (ws, uri) = res.unwrap();
+                if let Ok((stream, _)) = res
+                {
+                    if let Ok((ws, uri)) = get_websocket_and_uri(stream).await
+                    {
+                        let game_id = get_game_id(uri);
 
-                let game_id = get_game_id(uri);
+                        let (tx, rx) = mpsc::channel(10); // 10?
+                        state.add_sender(game_id, tx);
 
-                let (tx, rx) = mpsc::channel(10); // 10?
-                state.add_sender(game_id, tx);
+                        tokio::spawn(handle_connection(ws, rx));
+                    }
+                }
 
-                tokio::spawn(handle_connection(ws, rx));
+
             }
         };
     }
