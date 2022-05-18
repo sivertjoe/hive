@@ -132,4 +132,29 @@ mod test
 
         assert_eq!(legal_moves, Vec::new());
     }
+
+    #[test]
+    fn test_beetle_all_6_moves()
+    {
+        let mut board = Board::default();
+
+        let beetle_square = (2, 3, -5);
+        let beetle = Piece::new(BoardPiece::Beetle, Color::White);
+
+        let pos =
+            [(3, 1, -4), (2, 2, -4), (1, 3, -4), (1, 4, -5), (2, 4, -6), (3, 3, -6), (4, 2, -6)];
+
+
+        let iter = pos
+            .into_iter()
+            .map(|pos| (pos, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))))
+            .chain(std::iter::once((beetle_square, BoardSquare::new(beetle.clone()))));
+
+        board.from_iter(iter);
+        board.turns = 10;
+
+        let legal_moves = beetle_move(&board, beetle_square);
+
+        assert_eq!(legal_moves.len(), 6);
+    }
 }
