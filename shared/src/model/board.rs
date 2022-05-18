@@ -86,6 +86,20 @@ impl Board
         self.board.remove(&sq);
     }
 
+    pub fn remove_top(&mut self, sq: Square)
+    {
+        match self.board.remove(&sq)
+        {
+            Some(mut bs) if bs.pieces.len() > 1 =>
+            {
+                bs.remove_piece();
+                self.board.insert(sq, bs);
+            },
+            _ =>
+            {},
+        }
+    }
+
     pub fn from_iter<I>(&mut self, iter: I)
     where
         I: Iterator<Item = (Square, BoardSquare)>,
