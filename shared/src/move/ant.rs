@@ -2,8 +2,21 @@ use super::*;
 
 pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
 {
+    let mut vec = Vec::new();
+
+    const RIGHT: [Square; 6] =
+        [(0, -1, 1), (1, -1, 0), (1, 0, -1), (0, 1, -1), (-1, 1, 0), (-1, 0, 1)];
+
     const LEFT: [Square; 6] =
         [(0, 1, -1), (1, 0, -1), (1, -1, 0), (0, -1, 1), (-1, 0, 1), (-1, 1, 0)];
+
+    _ant_move(board, sq, RIGHT, &mut vec);
+    _ant_move(board, sq, LEFT, &mut vec);
+    vec
+}
+
+pub fn _ant_move(board: &Board, sq: Square, dirs: [Square; 6], res: &mut Vec<Square>)
+{
     let sq_add = |a: Square, b: Square| (a.0 + b.0, a.1 + b.1, a.2 + b.2);
     let common_neighbors = |a: Square, b: Square| {
         let an = neighbors(&a);
@@ -15,12 +28,10 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
     let org = sq;
     let mut current = sq;
 
-    let mut res = Vec::with_capacity(board.len() * 2);
-
     loop
     {
         let mut next = None;
-        for &dir in &LEFT
+        for &dir in &dirs
         {
             let sq = sq_add(current, dir);
 
@@ -30,19 +41,9 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             // we want to make the piece to 'hug the left wall'. These
             // functions (hopefully) avoids jumping between paralell structures
             let follows_path =
-                square_has_neighbors(sq, board, org) && common_neighbors(current, sq);
+                square_has_neighbors(sq, &board, org) && common_neighbors(current, sq);
 
-            if not_prev_pos
-                && empty_square
-                && follows_path
-                && can_fit(current, sq, board)
-                && !create_island(
-                    board,
-                    org,
-                    sq,
-                    &mut Vec::with_capacity(board.len()),
-                    &mut Vec::with_capacity(board.len()),
-                )
+            if not_prev_pos && empty_square && follows_path && can_fit(current, sq, &board)
             {
                 next = Some(sq);
                 current = sq;
@@ -56,7 +57,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             {
                 if sq == org
                 {
-                    return res;
+                    return;
                 }
                 else
                 {
@@ -65,7 +66,7 @@ pub fn ant_move(board: &Board, sq: Square) -> Vec<Square>
             },
             None =>
             {
-                return res;
+                return;
             },
         }
     }
@@ -149,8 +150,54 @@ mod test
 
         board.turns = 3; // To avoid queen check
 
-        let legal_moves = ant_move(&board, ant_square);
+        use super::legal_moves;
+
+        let legal_moves = legal_moves(&ant, &board, Some(ant_square));
 
         assert_eq!(legal_moves.len(), 0);
+    }
+
+
+    #[test]
+    fn test_ant_move_can_only_move_once_err()
+    {
+        let mut board = Board::default();
+
+        let ant_square = (0, 2, -2);
+        let ant = Piece::new(BoardPiece::Ant, Color::White);
+
+        let pos = [
+            (0, -1, 1),
+            (0, 0, 0),
+            (0, 1, -1),
+            (1, 1, -2),
+            (1, 2, -3),
+            (2, 2, -4),
+            (3, 1, -4),
+            (4, 2, -6),
+            (4, 3, -7),
+            (3, 3, -6),
+            (2, 3, -5),
+            (1, 4, -5),
+            (1, 5, -6),
+            (1, 6, -7),
+            (0, 5, -5),
+            (-1, 6, -5),
+            (0, 4, -4),
+            (-1, 4, -3),
+        ];
+
+
+        let iter = pos
+            .into_iter()
+            .map(|pos| (pos, BoardSquare::new(Piece::new(BoardPiece::Ant, Color::Black))))
+            .chain(std::iter::once((ant_square, BoardSquare::new(ant.clone()))));
+
+        board.from_iter(iter);
+        board.turns = 10;
+
+        let legal_moves = legal_moves(&ant, &board, Some(ant_square));
+
+        assert_ne!(legal_moves.len(), 1);
     }
 }
