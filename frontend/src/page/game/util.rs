@@ -24,13 +24,7 @@ pub fn place_piece(model: &mut Model, piece: Piece, sq: Square) {
 }
 
 pub fn play_move(model: &mut Model, r#move: Move) {
-    if let Some(old) = r#move.old_sq {
-        if let Some(hex) = get_hex_from_square(model, old) {
-            hex.remove_top();
-        }
-    }
     place_piece(model, r#move.piece, r#move.sq);
-
     get_board_mut(model).unwrap().play_move(r#move.clone());
     model.game.as_mut().unwrap().move_list.push(r#move.into());
 }
