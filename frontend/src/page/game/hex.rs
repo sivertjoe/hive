@@ -26,6 +26,8 @@ pub struct Hex {
 
     pub highlight: bool,
     pub red: bool,
+    pub yellow: bool,
+    pub selected_piece: bool,
 }
 
 impl Orientation {
@@ -55,6 +57,8 @@ impl Hex {
             selected: false,
             highlight: false,
             red: false,
+            yellow: false,
+            selected_piece: false,
         }
     }
 
@@ -95,15 +99,23 @@ impl Hex {
             _ => ("transparent", "1.0"),
         };
 
-        let c = if self.highlight { "selected-piece" } else { "" };
+
+        //let c = if self.highlight { "selected-piece" } else { "" };
+        //
+
+        let stroke = match (self.selected_piece, self.yellow) {
+            (true, _) => "red",
+            (_, true) => "rgb(255, 255, 80)",
+            _ => "rgb(50, 50, 50)",
+        };
+
 
         r#use![attrs! {
             At::Href => "#pod",
             At::Transform => format!("translate({x}, {y})"),
             At::Fill => fill,
-            At::Stroke => "gold",
+            At::Stroke => stroke,
             At::Opacity => opacity,
-            At::Class => c,
             At::DropZone => "move",
         },]
     }

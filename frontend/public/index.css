@@ -138,12 +138,6 @@ svg {
     align-items: center;
 }
 
-.selected-piece {
-    border: 1px solid transparent;
-    stroke: white;
-}
-
-
 .board-container {
     width: 800px;
     height: 800px;
