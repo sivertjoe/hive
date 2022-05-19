@@ -70,9 +70,10 @@ pub struct Model {
 }
 
 fn gen_size(n: f32) -> String {
-    let l = 5. * n * 0.8;
-    let h = 9. * n * 0.8;
-    let w = 10. * n * 0.8;
+    let mul = 0.7;
+    let l = 5. * n * mul;
+    let h = 9. * n * mul;
+    let w = 10. * n * mul;
 
     format!("{l}, -{h} -{l}, -{h} -{w}, 0 -{l}, {h} {l}, {h} {w}, 0")
 }
@@ -97,7 +98,7 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
                     .ok();
                 const DEFAULT_RAD: usize = 0;
                 const DEFAULT_SIZE: f32 = 0.5;
-                const DEFAULT_MOD: f32 = 1.0;
+                const DEFAULT_MOD: f32 = 0.5;
 
 
                 Some(Model {
@@ -183,6 +184,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 // No need to play the move if we just played it.
                 if !just_my_move(model, &r#move) {
                     let rad = sq_radius(r#move.sq);
+                    if let Some(old_sq) = r#move.old_sq {
+                        remove_top_piece(model, old_sq);
+                    }
                     play_move(model, r#move);
 
 
@@ -249,13 +253,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             if let Some(hex) = get_piece_from_square_mut(model, sq) {
                 let cl = hex.clone();
                 hex.remove_top();
+                hex.selected_piece = true;
 
                 let mut sel: SelectedPiece = cl.into();
                 sel.x = x;
                 sel.y = y;
                 model.piece = Some(sel);
             }
-            // clear_red(model);
         }
 
         Msg::Release(event) => {
@@ -266,6 +270,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             if mm.button() != 0 {
                 return;
             }
+
 
             if let Some(selected_piece) = model.piece.take() {
                 if legal_move(model, sq) {
@@ -289,10 +294,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 } else {
                     place_piece_back(model, selected_piece);
                 }
-
-                clear_highlighs(model);
-                model.legal_moves_cache = None;
             }
+            clear_highlighs(model);
+            model.legal_moves_cache = None;
+            clear_red(model);
+            clear_yellow(&mut model.gridv3);
         }
 
         Msg::Move(event) => {

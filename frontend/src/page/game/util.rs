@@ -26,6 +26,19 @@ pub fn place_piece(model: &mut Model, piece: Piece, sq: Square) {
 pub fn play_move(model: &mut Model, r#move: Move) {
     place_piece(model, r#move.piece, r#move.sq);
     get_board_mut(model).unwrap().play_move(r#move.clone());
+
+    clear_yellow(&mut model.gridv3);
+
+    if let Some(hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == r#move.sq) {
+        hex.yellow = true;
+    }
+
+    if let Some(old) = r#move.old_sq.as_ref() {
+        if let Some(hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == *old) {
+            hex.yellow = true;
+        }
+    }
+
     model.game.as_mut().unwrap().move_list.push(r#move.into());
 }
 
@@ -66,6 +79,7 @@ pub fn place_piece_back(model: &mut Model, sel: SelectedPiece) {
 pub fn clear_highlighs(model: &mut Model) {
     for hex in &mut model.gridv3 {
         hex.selected = false;
+        hex.selected_piece = false;
     }
 }
 
@@ -200,19 +214,21 @@ pub fn get_radius(model: &Model) -> usize {
 
 // Nothing to see here 🧙
 pub fn get_piece_dim(_model: &Model) -> (f32, f32) {
-    let h = 55.0;
+    let h = 50.0;
 
     (h * RATIO, h)
 }
 
 pub fn get_piece_pos(_model: &Model, (x, y): (f32, f32)) -> (f32, f32) {
     // _think_ * 8 because board is 800 * 800, vs 100 * 100 viewbox
-    (x * 8. - 31.5, y * 8. - 26.)
+    (x * 8. - 29.5, y * 8. - 25.5)
 }
 
 pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crate::Msg> {
     let (x, y) = get_piece_pos(model, pos);
     let (w, h) = get_piece_dim(model);
+
+
     custom![
         Tag::from("piece"),
         C!(piece_class(piece)),
@@ -298,6 +314,25 @@ impl FromStr for Key {
     }
 }
 
+fn add_yellow(grid: &mut Vec<Hex>, r#move: InternalMove) {
+    for hex in grid {
+        if hex.sq() == r#move.sq {
+            hex.yellow = true;
+        }
+        if let Some(old_sq) = r#move.old_sq {
+            if hex.sq() == old_sq {
+                hex.yellow = true;
+            }
+        }
+    }
+}
+
+pub fn clear_yellow(grid: &mut Vec<Hex>) {
+    for hex in grid {
+        hex.yellow = false;
+    }
+}
+
 pub fn replay_move(model: &mut Model, key: Key) {
     if model.replay_board.is_none() {
         model.replay_board = ReplayBoard::new(model);
@@ -307,11 +342,18 @@ pub fn replay_move(model: &mut Model, key: Key) {
         if let Some(index) = replay.get_and_update_index(key) {
             let m = model.game.as_ref().unwrap().move_list[index].clone();
 
+            clear_yellow(&mut model.gridv3);
             match key {
                 Key::Left => {
+                    if index > 0 {
+                        let prev = model.game.as_ref().unwrap().move_list[index - 1].clone();
+                        add_yellow(&mut model.gridv3, prev);
+                    }
+
                     replay.board.unplay_move(m);
                 }
                 Key::Right => {
+                    add_yellow(&mut model.gridv3, m.clone());
                     replay.board.play_move_(m);
                 }
             };
@@ -325,5 +367,11 @@ pub fn clear_replay(model: &mut Model) {
     if model.replay_board.is_some() {
         model.replay_board = None;
         grid_from_board(model);
+    }
+}
+
+pub fn remove_top_piece(model: &mut Model, sq: Square) {
+    if let Some(hex) = model.gridv3.iter_mut().find(|hex| hex.sq() == sq) {
+        hex.remove_top();
     }
 }
