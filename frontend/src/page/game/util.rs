@@ -227,16 +227,22 @@ pub fn get_piece_pos(_model: &Model, (x, y): (f32, f32)) -> (f32, f32) {
 pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crate::Msg> {
     let (x, y) = get_piece_pos(model, pos);
     let (w, h) = get_piece_dim(model);
+    let (x, y) = (x + model.drag.0 * 8., y + model.drag.1 * 8.);
 
 
-    custom![
-        Tag::from("piece"),
-        C!(piece_class(piece)),
+    div![
         style! {
-            St::Transform => format!("translate({x}px, {y}px)"),
-            St::Width => format!("{w}px"),
-            St::Height => format!("{h}px"),
-        }
+        St::Position => "relative"
+        },
+        custom![
+            Tag::from("piece"),
+            C!(piece_class(piece)),
+            style! {
+                St::Transform => format!("translate({x}px, {y}px)"),
+                St::Width => format!("{w}px"),
+                St::Height => format!("{h}px"),
+            }
+        ]
     ]
 }
 
@@ -284,7 +290,7 @@ pub fn view_board(model: &Model) -> Node<crate::Msg> {
                 At::Points => &model.size,
             },]
         ]],
-        model.gridv3.iter().map(Hex::node),
+        model.gridv3.iter().map(|hex| hex.node(model.drag))
     ]
 }
 
