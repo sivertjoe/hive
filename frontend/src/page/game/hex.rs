@@ -89,8 +89,9 @@ impl Hex {
     }
 
 
-    pub fn node(&self) -> Node<crate::Msg> {
+    pub fn node(&self, drag: (f32, f32)) -> Node<crate::Msg> {
         let (x, y) = self.to_pixels();
+        let (x, y) = (x + drag.0, y + drag.1);
 
 
         let (fill, opacity) = match (self.red, self.selected) {
