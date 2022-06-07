@@ -67,6 +67,9 @@ pub struct Model {
 
     pub _size: f32,
     pub _modifier: f32,
+
+    pub drag_origin: Option<(f32, f32)>,
+    pub drag: (f32, f32),
 }
 
 fn gen_size(n: f32) -> String {
@@ -117,6 +120,9 @@ pub fn init(mut url: Url, orders: &mut impl Orders<Msg>) -> Option<Model> {
 
                     _size: DEFAULT_SIZE,
                     _modifier: DEFAULT_MOD,
+
+                    drag_origin: None,
+                    drag: Default::default(),
                 })
             }
             _ => None,
@@ -259,6 +265,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 sel.x = x;
                 sel.y = y;
                 model.piece = Some(sel);
+            } else {
+                model.drag_origin = Some((x - model.drag.0, y - model.drag.1));
             }
         }
 
@@ -324,6 +332,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                             Some(legal_moves(piece, board, Some(sel.old_square)));
                     }
                 }
+            } else if let Some((ox, oy)) = model.drag_origin {
+                model.drag = (x - ox, y - oy);
             }
 
             set_highlight(model, true);
@@ -388,6 +398,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             else if mm.button() == 0 {
                 //clear_red(model);
             }
+
+
+            model.drag_origin = None;
         }
     }
 }
@@ -416,6 +429,7 @@ pub fn view(model: &Model) -> Node<crate::Msg> {
 
 pub fn grid(model: &Model) -> Node<crate::Msg> {
     div![
+        C!("board-container"),
         ev(Ev::Drop, |event| {
             let ev = to_drag_event(&event);
             let id = ev.data_transfer().unwrap().get_data("text/plain").unwrap();
@@ -431,10 +445,9 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
         ev(Ev::MouseUp, |event| {
             crate::Msg::Game(Msg::MouseUp(event))
         }),
-        C!("board-container"),
-        view_pieces(model),
         div![
             C!("board"),
+            view_pieces(model),
             view_board(model),
             IF!(model.piece.is_some() => {
                 model.piece.as_ref().unwrap().node(&model)

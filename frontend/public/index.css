@@ -161,6 +161,7 @@ piece {
     top: 0;
     left: 0;
     background-size: contain;
+    background-repeat: no-repeat;
     will-change: transform;
     pointer-events: none;
 }
