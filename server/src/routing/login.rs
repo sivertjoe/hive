@@ -1,23 +1,15 @@
-use hyper::{Body, Method, Request, Response};
-use shared::model::UserCredentials;
+use hyper::{Body, Method, Request};
+use shared::ObjectId;
 
-use super::{error, get_body, method_not_allowed, ok};
+use super::{data, HttpError, HttpResult};
 use crate::{database, State};
 
-pub async fn login(req: Request<Body>, state: State) -> Response<Body>
+
+pub async fn login(req: Request<Body>, state: State) -> HttpResult<ObjectId>
 {
     match *req.method()
     {
-        Method::POST =>
-        {
-            let cred = get_body::<UserCredentials>(req).await.unwrap();
-
-            match database::login(state.db(), cred).await
-            {
-                Ok(uuid) => Response::new(ok(uuid)),
-                Err(e) => Response::new(error(e)),
-            }
-        },
-        _ => Response::new(method_not_allowed()),
+        Method::POST => data(database::login, req, state.db(), HttpResult::Ok).await,
+        _ => HttpResult::Err(HttpError::MethodNotAllowed),
     }
 }
