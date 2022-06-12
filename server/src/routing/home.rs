@@ -1,10 +1,11 @@
-use hyper::{Body, Method, Request, Response};
+use hyper::{Body, Method, Request};
 use mongodb::bson::oid::ObjectId;
+use shared::model::CreateGameChallengeBundle;
 
-use super::{error, get_body, method_not_allowed, ok};
+use super::{get_body, HttpError, HttpResult};
 use crate::{database, State};
 
-pub async fn home(req: Request<Body>, state: State) -> Response<Body>
+pub async fn home(req: Request<Body>, state: State) -> HttpResult<Vec<CreateGameChallengeBundle>>
 {
     match *req.method()
     {
@@ -12,14 +13,14 @@ pub async fn home(req: Request<Body>, state: State) -> Response<Body>
         {
             // Just generate and use a new ObjectId if none was received, i.e,
             // user was not logged in
-            let uuid = get_body::<ObjectId>(req).await.unwrap_or_else(ObjectId::new);
+            let object_id = get_body::<ObjectId>(req).await.unwrap_or_else(ObjectId::new);
 
-            match database::home(state.db(), uuid).await
+            match database::home(state.db(), object_id).await
             {
-                Ok(bundle) => Response::new(ok(bundle)),
-                Err(e) => Response::new(error(e)),
+                Ok(bundle) => HttpResult::Ok(bundle),
+                Err(e) => HttpResult::Err(HttpError::Database(e)),
             }
         },
-        _ => Response::new(method_not_allowed()),
+        _ => HttpResult::Err(HttpError::MethodNotAllowed),
     }
 }
