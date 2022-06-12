@@ -1,33 +1,32 @@
-use hyper::{Body, Method, Request, Response};
-use shared::{model::CreateGameFormResponse, ObjectId};
+use hyper::{Body, Method, Request};
+use shared::ObjectId;
 
-use super::{create, error, get_body, method_not_allowed};
+use super::{data, HttpError, HttpResult};
 use crate::{database, State};
 
-pub async fn create_game(req: Request<Body>, state: State) -> Response<Body>
+
+pub async fn create_game(
+    req: Request<Body>,
+    state: State,
+) -> HttpResult<Box<dyn erased_serde::Serialize>>
 {
     match *req.method()
     {
-        Method::POST =>
-        {
-            let id = get_body::<ObjectId>(req).await.unwrap();
-
-            match database::create_game(state.db(), id).await
-            {
-                Ok(_) => Response::new(create(())),
-                Err(e) => Response::new(error(e)),
-            }
-        },
         Method::PUT =>
         {
-            let form = get_body::<CreateGameFormResponse>(req).await.unwrap();
-
-            match database::accept_game(state.db(), form).await
-            {
-                Ok(id) => Response::new(create(id)),
-                Err(e) => Response::new(error(e)),
-            }
+            let f = |acc| -> HttpResult<Box<dyn erased_serde::Serialize>> {
+                HttpResult::Ok(Box::new(acc))
+            };
+            data(database::accept_game, req, state.db(), f).await
         },
-        _ => Response::new(method_not_allowed()),
+        Method::POST =>
+        {
+            let f = |id: ObjectId| -> HttpResult<Box<dyn erased_serde::Serialize>> {
+                HttpResult::Ok(Box::new(id))
+            };
+
+            data(database::create_game, req, state.db(), f).await
+        },
+        _ => HttpResult::Err(HttpError::MethodNotAllowed),
     }
 }

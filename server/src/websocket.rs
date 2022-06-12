@@ -18,6 +18,7 @@ use tungstenite::{
 };
 
 
+#[derive(Debug)]
 pub struct Message
 {
     pub r#move: Move,
@@ -125,7 +126,6 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
 
             _ = interval.tick() =>
             {
-                println!("SENDING PING");
                 let msg = Ping(Vec::new());
                 if ws.send(msg).await.is_err()
                 {
@@ -138,9 +138,7 @@ async fn handle_connection(mut ws: WebSocketStream<TcpStream>, mut rx: mpsc::Rec
             {
                 match res
                 {
-                    Some(Ok(Pong(_))) => {
-                        println!("RECEIVED PONG");
-                    },
+                    Some(Ok(Pong(_))) => {},
                     _ => break,
                 }
             }

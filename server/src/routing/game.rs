@@ -1,8 +1,8 @@
-use hyper::{Body, Method, Request, Response};
+use hyper::{Body, Method, Request};
 use mongodb::bson::oid::ObjectId;
 use shared::model::Move;
 
-use super::{bad_request, error, get_body, method_not_allowed, ok};
+use super::{get_body, HttpError, HttpResult};
 use crate::{
     database::{
         complete_game, get_active_games, get_game_by_id, get_old_games, get_users_games, play_move,
@@ -11,103 +11,95 @@ use crate::{
     State,
 };
 
+pub async fn game(req: Request<Body>, state: State)
+    -> HttpResult<Box<dyn erased_serde::Serialize>>
+{
+    match *req.method()
+    {
+        Method::GET => get(req, state).await,
+        Method::POST => post(req, state).await,
+        Method::DELETE => delete(req, state).await,
+        _ => HttpResult::Err(HttpError::MethodNotAllowed),
+    }
+}
 
-async fn get(req: Request<Body>, state: State) -> Response<Body>
+async fn get(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serde::Serialize>>
 {
     match req.uri().query().and_then(|uri| Query::from_str(uri).ok())
     {
         Some(q) => match q
         {
-            Query::All =>
+            Query::All => match get_active_games(state.db()).await
             {
-                let res = get_active_games(state.db()).await.unwrap();
-                Response::new(ok(res))
+                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
 
-            Query::Old =>
+            Query::Old => match get_old_games(state.db()).await
             {
-                let res = get_old_games(state.db()).await.unwrap();
-                Response::new(ok(res))
+                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
 
             Query::Id(object_id) => match get_game_by_id(state.db(), object_id).await
             {
-                Ok(res) => Response::new(ok(res)),
-
-                Err(e) =>
-                {
-                    println!("err");
-                    Response::new(error(e))
-                },
+                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
-
             Query::User(object_id) => match get_users_games(state.db(), object_id).await
             {
-                Ok(res) => Response::new(ok(res)),
-
-                Err(e) =>
-                {
-                    println!("err");
-                    Response::new(error(e))
-                },
+                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
         },
-        _ => Response::new(bad_request()),
+        _ => HttpResult::Err(HttpError::Serialize),
     }
 }
 
-
-async fn post(req: Request<Body>, state: State) -> Response<Body>
+async fn post(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serde::Serialize>>
 {
-    let r#move = get_body::<Move>(req).await.unwrap();
-    match play_move(state.db(), r#move.clone()).await
+    match get_body::<Move>(req).await
     {
-        Ok(()) =>
+        Some(r#move) => match play_move(state.db(), r#move.clone()).await
         {
-            let msg = crate::websocket::Message {
-                r#move,
-            };
-            match state.tx.send(msg).await
+            Ok(()) =>
             {
-                Ok(_) => Response::new(ok(())),
-                _ => panic!("websocket server is dead"),
-            }
+                let msg = crate::websocket::Message {
+                    r#move,
+                };
+                match state.tx.send(msg).await
+                {
+                    Ok(_) => HttpResult::Ok(Box::new(())),
+                    Err(e) => HttpResult::Err(HttpError::Channel(Box::new(e))),
+                }
+            },
+            Err(e) => HttpResult::Err(HttpError::Database(e)),
         },
-        Err(e) => Response::new(error(e)),
+        _ => HttpResult::Err(HttpError::Serialize),
     }
 }
 
-
-pub async fn game(req: Request<Body>, state: State) -> Response<Body>
+async fn delete(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serde::Serialize>>
 {
-    match *req.method()
+    match get_body::<ObjectId>(req).await
     {
-        Method::GET => get(req, state).await,
-
-        Method::POST => post(req, state).await,
-
-        Method::DELETE =>
+        Some(id) => match get_game_by_id(state.db(), id).await
         {
-            let id = get_body::<ObjectId>(req).await.unwrap();
-
-            let db = state.db();
-            let game = match get_game_by_id(db.clone(), id).await
+            Ok(game) =>
             {
-                Ok(game) => game,
-                Err(e) => return Response::new(error(e)),
-            };
-
-            if game.board.is_complete()
-            {
-                complete_game(db, id).await.unwrap();
-                Response::new(ok(()))
-            }
-            else
-            {
-                Response::new(error(GameNotComplete))
-            }
+                if game.board.is_complete()
+                {
+                    complete_game(state.db(), id).await.unwrap();
+                    HttpResult::Ok(Box::new(()))
+                }
+                else
+                {
+                    HttpResult::Err(HttpError::Database(GameNotComplete))
+                }
+            },
+            Err(e) => HttpResult::Err(HttpError::Database(e)),
         },
-        _ => Response::new(method_not_allowed()),
+        _ => HttpResult::Err(HttpError::Serialize),
     }
 }
 

@@ -20,6 +20,7 @@ getrandom = "0.2.5"
 tokio-tungstenite = "0.17.1"
 tungstenite = "0.17.2"
 const_format = "0.2.22"
+erased-serde = "0.3.20"
 
 
 shared = { path = "../shared" }
