@@ -153,6 +153,7 @@ svg {
     left: 0px;
     width: inherit;
     height: inherit;
+    overflow: hidden;
 }
 
 
@@ -162,7 +163,6 @@ piece {
     left: 0;
     background-size: contain;
     background-repeat: no-repeat;
-    will-change: transform;
     pointer-events: none;
 }
 

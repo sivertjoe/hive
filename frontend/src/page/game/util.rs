@@ -230,19 +230,14 @@ pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crat
     let (x, y) = (x + model.drag.0 * 8., y + model.drag.1 * 8.);
 
 
-    div![
+    custom![
+        Tag::from("piece"),
+        C!(piece_class(piece)),
         style! {
-        St::Position => "relative"
-        },
-        custom![
-            Tag::from("piece"),
-            C!(piece_class(piece)),
-            style! {
-                St::Transform => format!("translate({x}px, {y}px)"),
-                St::Width => format!("{w}px"),
-                St::Height => format!("{h}px"),
-            }
-        ]
+            St::Transform => format!("translate({x}px, {y}px)"),
+            St::Width => format!("{w}px"),
+            St::Height => format!("{h}px"),
+        }
     ]
 }
 
