@@ -146,6 +146,7 @@ pub enum Msg {
     Place((String, Event)),
     Drag(Piece),
     MouseUp(Event),
+
     ButtonPress(Event),
 }
 
@@ -169,14 +170,16 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let key = to_keyboard_event(&event);
             use std::str::FromStr;
 
-            match Key::from_str(key.code().as_str()) {
-                Ok(key) => {
-                    event.prevent_default();
-                    event.stop_propagation();
+            if let Ok(key) = Key::from_str(key.code().as_str()) {
+                event.prevent_default();
+                event.stop_propagation();
 
-                    replay_move(model, key);
-                }
-                _ => {}
+                replay_move(model, key);
+            } else if key.code().as_str() == "Space" {
+                event.prevent_default();
+                event.stop_propagation();
+                model.drag = Default::default();
+                model.drag_origin = Default::default();
             }
         }
         Msg::Open => {
@@ -253,7 +256,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 return;
             }
             let (x, y) = get_mouse_pos(model, mm);
-            let sq = pixel_to_hex(x as isize, y as isize);
+            let sq = pixel_to_hex(model, x as isize, y as isize);
 
 
             if let Some(hex) = get_piece_from_square_mut(model, sq) {
@@ -273,7 +276,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Release(event) => {
             let mm = to_mouse_event(&event);
             let (x, y) = get_mouse_pos(model, mm);
-            let sq = pixel_to_hex(x as isize, y as isize);
+            let sq = pixel_to_hex(model, x as isize, y as isize);
 
             if mm.button() != 0 {
                 return;
@@ -342,7 +345,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Place((id, event)) => {
             let mm = to_mouse_event(&event);
             let (x, y) = get_mouse_pos(model, mm);
-            let sq = pixel_to_hex(x as isize, y as isize);
+            let sq = pixel_to_hex(model, x as isize, y as isize);
 
 
             if legal_move(model, sq) {
@@ -386,7 +389,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             // Secondary button, i.e, right-click
             if mm.button() == 2 {
                 let (x, y) = get_mouse_pos(model, mm);
-                let sq = pixel_to_hex(x as isize, y as isize);
+                let sq = pixel_to_hex(model, x as isize, y as isize);
 
                 if let Some(hex) = get_hex_from_square(model, sq) {
                     hex.red = !hex.red;
@@ -445,9 +448,9 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
         ev(Ev::MouseUp, |event| {
             crate::Msg::Game(Msg::MouseUp(event))
         }),
+        view_pieces(model),
         div![
             C!("board"),
-            view_pieces(model),
             view_board(model),
             IF!(model.piece.is_some() => {
                 model.piece.as_ref().unwrap().node(&model)

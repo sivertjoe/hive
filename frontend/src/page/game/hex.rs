@@ -161,8 +161,9 @@ const _S: f32 = 5.1;
 const S: f32 = _S * 0.8;
 
 #[allow(non_snake_case)]
-pub fn pixel_to_hex(x: isize, y: isize) -> Square {
+pub fn pixel_to_hex(model: &super::Model, x: isize, y: isize) -> Square {
     let (x, y) = (x as f32 - 50., y as f32 - 50.);
+    let (x, y) = (x - model.drag.0, y - model.drag.1);
 
     let x = x / S;
     let y = y / S;
