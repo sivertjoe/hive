@@ -12,7 +12,7 @@ pub struct SelectedPiece {
 impl SelectedPiece {
     pub fn node(&self, model: &Model) -> Node<crate::Msg> {
         let pos = (self.x, self.y);
-        piece_to_node(model, &self.piece, pos)
+        piece_to_node_old(model, &self.piece, pos)
     }
 }
 
