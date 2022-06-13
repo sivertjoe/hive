@@ -28,20 +28,15 @@ pub fn init(orders: &mut impl Orders<Msg>) -> Model {
         .perform_cmd(async { Msg::FetchedAvailableGames(get_all_games().await) })
         .perform_cmd(async { Msg::FetchedOldGames(get_old_games().await) })
         .perform_cmd(async {
-            let id: Result<ObjectId, _> = LocalStorage::get("id");
-            if let Ok(id) = id {
-                Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
-            } else {
-                Msg::FetchedCreateGame(send_message("noid", "home", Method::Post).await)
-            }
+            let id: ObjectId =
+                LocalStorage::get("id").unwrap_or_else(|_| ObjectId::from_bytes([0; 12]));
+
+            Msg::FetchedCreateGame(send_message(id, "home", Method::Post).await)
         })
         .perform_cmd(async {
-            let id: Result<ObjectId, _> = LocalStorage::get("id");
-            if let Ok(id) = id {
-                Msg::FetchedUsersGames(get_users_games(id.to_string()).await)
-            } else {
-                Msg::FetchedUsersGames(get_users_games("noid".to_string()).await)
-            }
+            let id: ObjectId =
+                LocalStorage::get("id").unwrap_or_else(|_| ObjectId::from_bytes([0; 12]));
+            Msg::FetchedUsersGames(get_users_games(id.to_string()).await)
         });
 
     Model::default()
