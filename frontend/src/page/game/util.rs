@@ -224,6 +224,24 @@ pub fn get_piece_pos(_model: &Model, (x, y): (f32, f32)) -> (f32, f32) {
     (x * 8. - 29.5, y * 8. - 25.5)
 }
 
+// Have to do this because when I pick up a piece I dont want to add the drag.
+// For now, this is just going to be scuffed. TODO
+pub fn piece_to_node_old(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crate::Msg> {
+    let (x, y) = get_piece_pos(model, pos);
+    let (w, h) = get_piece_dim(model);
+
+
+    custom![
+        Tag::from("piece"),
+        C!(piece_class(piece)),
+        style! {
+            St::Transform => format!("translate({x}px, {y}px)"),
+            St::Width => format!("{w}px"),
+            St::Height => format!("{h}px"),
+        }
+    ]
+}
+
 pub fn piece_to_node(model: &Model, piece: &Piece, pos: (f32, f32)) -> Node<crate::Msg> {
     let (x, y) = get_piece_pos(model, pos);
     let (w, h) = get_piece_dim(model);
@@ -290,11 +308,19 @@ pub fn view_board(model: &Model) -> Node<crate::Msg> {
 }
 
 pub fn view_pieces(model: &Model) -> Node<crate::Msg> {
-    div![model.gridv3.iter().filter_map(|hex| {
-        hex.pieces
-            .last()
-            .map(|p| piece_to_node(model, p, hex.to_pixels()))
-    })]
+    div![
+        style! {
+            St::Overflow => "hidden",
+            St::Position => "absolute",
+            St::Width => "inherit",
+            St::Height => "inherit",
+        },
+        model.gridv3.iter().filter_map(|hex| {
+            hex.pieces
+                .last()
+                .map(|p| piece_to_node(model, p, hex.to_pixels()))
+        })
+    ]
 }
 
 #[derive(Clone, Copy)]
