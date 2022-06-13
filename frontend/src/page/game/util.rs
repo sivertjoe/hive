@@ -161,6 +161,17 @@ pub fn get_move_color(model: &Model) -> Option<Color> {
     })
 }
 
+/*
+ * This function determins if it is your turn of not.
+ * None represent the case if you are spectating
+ */
+pub fn my_turn(model: &Model) -> Option<bool> {
+    match (get_move_color(model), model.color) {
+        (Some(c1), Some(c2)) => Some(c1 == c2),
+        _ => None,
+    }
+}
+
 pub fn legal_turn(model: &Model) -> bool {
     match (get_move_color(model), model.color) {
         (Some(c1), Some(c2)) => c1 == c2,
