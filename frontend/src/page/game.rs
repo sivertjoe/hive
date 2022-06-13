@@ -410,21 +410,39 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 pub fn view(model: &Model) -> Node<crate::Msg> {
     div![
-        C!("container"),
+        IF!(matches!(my_turn(model), Some(true)) => {
+            h1![
+                style! {
+                    St::Color => "ForestGreen",
+                },
+                "Your turn!",
+            ]
+        }),
+        IF!(matches!(my_turn(model), Some(false)) => {
+            h1![
+                style! {
+                    St::Color => "gold",
+                },
+                "Opponents turn!",
+            ]
+        }),
         div![
-            style! {
-                St::Display => "flex",
-                //St::Float => "left",
-            },
-            IF!(model.menu.is_some() => {
-                div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
-            }),
+            C!("container"),
             div![
-                grid(model),
-                IF!(model.label.is_some() => match model.label {
-                    Some(ref s) => h2! [C!("error"), s],
-                    _ => unreachable!()
-                })
+                style! {
+                    St::Display => "flex",
+                    //St::Float => "left",
+                },
+                IF!(model.menu.is_some() => {
+                    div![C!("piece-menu"), model.menu.as_ref().unwrap().to_node()]
+                }),
+                div![
+                    grid(model),
+                    IF!(model.label.is_some() => match model.label {
+                        Some(ref s) => h2! [C!("error"), s],
+                        _ => unreachable!()
+                    })
+                ]
             ]
         ]
     ]
