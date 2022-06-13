@@ -53,7 +53,7 @@ async fn spawn_http_server(state: State) -> Result<(), SError>
 }
 
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 pub async fn main() -> Result<(), SError>
 {
     let client = database::connect().await?;
