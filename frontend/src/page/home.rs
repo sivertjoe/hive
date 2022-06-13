@@ -17,6 +17,11 @@ pub struct Model {
     users_games: Vec<OnGoingGame>, // Shh
 }
 
+fn is_logged_in() -> bool {
+    let f: seed::browser::web_storage::Result<ObjectId> = LocalStorage::get("id");
+    f.is_ok()
+}
+
 pub fn init(orders: &mut impl Orders<Msg>) -> Model {
     orders
         .skip()
@@ -276,14 +281,19 @@ fn label<Ms: 'static>(model: &Model) -> Option<Node<Ms>> {
 }
 
 pub fn view<Ms: 'static>(model: &Model) -> Node<Ms> {
+    let logged_in = is_logged_in();
     div![
         C!("container"),
         div![
             C!("grid-container"),
-            available_games(model),
+            IF!(logged_in =>
+                available_games(model)
+            ),
             ongoing_games(model),
-            users_games(model),
-            old_games(model),
+            IF!(logged_in =>
+                users_games(model)
+            ),
+            old_games(model)
         ],
         label(model),
     ]
