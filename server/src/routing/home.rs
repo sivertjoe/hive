@@ -1,11 +1,15 @@
 use hyper::{Body, Method, Request};
 use mongodb::bson::oid::ObjectId;
-use shared::model::CreateGameChallengeBundle;
 
 use super::{get_body, HttpError, HttpResult};
 use crate::{database, State};
 
-pub async fn home(req: Request<Body>, state: State) -> HttpResult<Vec<CreateGameChallengeBundle>>
+/*
+ * Function for getting home page information.
+ * Takes the ObjectId of the user and returns available game invites.
+ * Probably going do remove this at some point.
+ */
+pub async fn home(req: Request<Body>, state: State) -> HttpResult
 {
     match *req.method()
     {
@@ -17,7 +21,7 @@ pub async fn home(req: Request<Body>, state: State) -> HttpResult<Vec<CreateGame
 
             match database::home(state.db(), object_id).await
             {
-                Ok(bundle) => HttpResult::Ok(bundle),
+                Ok(bundle) => HttpResult::new(HttpResult::Ok, bundle),
                 Err(e) => HttpResult::Err(HttpError::Database(e)),
             }
         },

@@ -1,9 +1,9 @@
-use std::{convert::Infallible, future::Future};
+use std::convert::Infallible;
 
 use hyper::{body, Body, Method, Request, Response};
 use shared::model::http::*;
 
-use crate::database::{self, DatabaseError};
+use crate::database::DatabaseError;
 
 
 mod create_game;
@@ -43,38 +43,21 @@ impl Serialize for HttpError
 }
 
 
-pub enum HttpResult<T: Serialize>
+pub enum HttpResult
 {
-    Ok(T),
-    Create(T),
+    Ok(Box<dyn erased_serde::Serialize>),
+    Create(Box<dyn erased_serde::Serialize>),
     Err(HttpError),
 }
 
-/*
- * This badboy is mostly made for fun 😎. Do not do this 🤠.
- */
-pub async fn data<F, Fut, B, S, Res, Fin>(
-    func: F,
-    req: Request<Body>,
-    db: mongodb::Database,
-    s: S,
-) -> HttpResult<Fin>
-where
-    F: Fn(mongodb::Database, B) -> Fut,
-    Fut: Future<Output = database::DatabaseResult<Res>>,
-    S: Fn(Res) -> HttpResult<Fin>,
-    Res: Serialize,
-    Fin: Serialize,
-    B: serde::de::DeserializeOwned,
+impl HttpResult
 {
-    match get_body::<B>(req).await
+    pub fn new<F, T>(f: F, v: T) -> Self
+    where
+        F: Fn(Box<dyn erased_serde::Serialize>) -> Self,
+        T: erased_serde::Serialize + 'static,
     {
-        Some(body) => match func(db, body).await
-        {
-            Ok(t) => s(t),
-            Err(e) => HttpResult::Err(HttpError::Database(e)),
-        },
-        None => HttpResult::Err(HttpError::Serialize),
+        f(Box::new(v))
     }
 }
 
@@ -113,7 +96,7 @@ fn log_req(req: &Request<Body>) -> String
     format!("[{now}]\t{method}\t{url}")
 }
 
-fn log_resp<T: Serialize>(resp: &HttpResult<T>, time: std::time::Duration) -> String
+fn log_resp(resp: &HttpResult, time: std::time::Duration) -> String
 {
     match resp
     {
@@ -136,15 +119,11 @@ fn error_code(e: &HttpError) -> u32
     }
 }
 
-impl<T> Into<Response<Body>> for HttpResult<T>
-where
-    T: Serialize,
+impl Into<Response<Body>> for HttpResult
 {
     fn into(self) -> Response<Body>
     {
-        fn f<T>(code: u32, t: T) -> Response<Body>
-        where
-            T: serde::Serialize,
+        fn f(code: u32, t: &dyn erased_serde::Serialize) -> Response<Body>
         {
             Response::new(Body::from(ResponseBody::to_body(
                 code,
@@ -154,56 +133,41 @@ where
 
         match self
         {
-            HttpResult::Ok(t) => f(200, t),
-            HttpResult::Create(t) => f(201, t),
-            HttpResult::Err(e) => f(error_code(&e), e),
+            HttpResult::Ok(t) => f(200, &t),
+            HttpResult::Create(t) => f(201, &t),
+            HttpResult::Err(e) => f(error_code(&e), &e),
         }
     }
 }
 
-fn handle_response<T>(
-    resp: HttpResult<T>,
-    info: &mut String,
-    now: std::time::Instant,
-) -> Response<Body>
-where
-    T: Serialize,
-{
-    info.push_str(&log_resp(&resp, now.elapsed()));
-    resp.into()
-}
-
 async fn handle_request(req: Request<Body>, state: State) -> Response<Body>
 {
-    if cfg!(debug_assertions)
-    {
-        log_req(&req);
-    }
-
     if let Some(path) = req.uri().path().strip_prefix("/api/")
     {
         let mut info = log_req(&req);
         info.push(' ');
 
         let now = std::time::Instant::now();
-        let res = match path
+        let resp = match path
         {
-            "register" => handle_response(register(req, state).await, &mut info, now),
-            "login" => handle_response(login(req, state).await, &mut info, now),
-            "game" => handle_response(game(req, state).await, &mut info, now),
-            "create-game" => handle_response(create_game(req, state).await, &mut info, now),
-            "home" => handle_response(home(req, state).await, &mut info, now),
+            "register" => register(req, state).await,
+            "login" => login(req, state).await,
+            "game" => game(req, state).await,
+            "create-game" => create_game(req, state).await,
+            "home" => home(req, state).await,
 
-            _ => handle_response(HttpResult::<()>::Err(HttpError::NotFound), &mut info, now),
+            _ => HttpResult::Err(HttpError::NotFound),
         };
 
+        info.push_str(&log_resp(&resp, now.elapsed()));
         println!("{}", info);
-        res
+        resp
     }
     else
     {
-        HttpResult::<()>::Err(HttpError::NotFound).into()
+        HttpResult::Err(HttpError::NotFound)
     }
+    .into()
 }
 
 pub async fn handle(req: Request<Body>, state: State) -> Result<Response<Body>, Infallible>

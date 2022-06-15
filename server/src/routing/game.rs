@@ -11,8 +11,13 @@ use crate::{
     State,
 };
 
-pub async fn game(req: Request<Body>, state: State)
-    -> HttpResult<Box<dyn erased_serde::Serialize>>
+/*
+ * Function for games. The http methods are:
+ *     GET   : get game/games
+ *     POST  : play a move on a game
+ *     DElETE: delete a finished game
+ */
+pub async fn game(req: Request<Body>, state: State) -> HttpResult
 {
     match *req.method()
     {
@@ -23,7 +28,11 @@ pub async fn game(req: Request<Body>, state: State)
     }
 }
 
-async fn get(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serde::Serialize>>
+/*
+ * Get game/games based on the query in the URL, See Query::from_str for more
+ * info
+ */
+async fn get(req: Request<Body>, state: State) -> HttpResult
 {
     match req.uri().query().and_then(|uri| Query::from_str(uri).ok())
     {
@@ -31,24 +40,24 @@ async fn get(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serd
         {
             Query::All => match get_active_games(state.db()).await
             {
-                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Ok(res) => HttpResult::new(HttpResult::Ok, res),
                 Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
 
             Query::Old => match get_old_games(state.db()).await
             {
-                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Ok(res) => HttpResult::new(HttpResult::Ok, res),
                 Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
 
             Query::Id(object_id) => match get_game_by_id(state.db(), object_id).await
             {
-                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Ok(res) => HttpResult::new(HttpResult::Ok, res),
                 Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
             Query::User(object_id) => match get_users_games(state.db(), object_id).await
             {
-                Ok(res) => HttpResult::Ok(Box::new(res)),
+                Ok(res) => HttpResult::new(HttpResult::Ok, res),
                 Err(e) => HttpResult::Err(HttpError::Database(e)),
             },
         },
@@ -56,7 +65,14 @@ async fn get(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serd
     }
 }
 
-async fn post(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serde::Serialize>>
+
+/*
+ * Function for handling moves.
+ * Expects a Move struct in the request body.
+ * Additionally sends the move to the websocket server to send to the
+ * spectators.
+ */
+async fn post(req: Request<Body>, state: State) -> HttpResult
 {
     match get_body::<Move>(req).await
     {
@@ -69,7 +85,7 @@ async fn post(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_ser
                 };
                 match state.tx.send(msg).await
                 {
-                    Ok(_) => HttpResult::Ok(Box::new(())),
+                    Ok(_) => HttpResult::new(HttpResult::Ok, ()),
                     Err(e) => HttpResult::Err(HttpError::Channel(Box::new(e))),
                 }
             },
@@ -79,9 +95,13 @@ async fn post(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_ser
     }
 }
 
-async fn delete(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_serde::Serialize>>
+/*
+ * Function for completing a game.
+ * Expects the ObjectId of the game being deleted in the Body.
+ */
+async fn delete(req: Request<Body>, state: State) -> HttpResult
 {
-    match get_body::<ObjectId>(req).await
+    match get_body(req).await
     {
         Some(id) => match get_game_by_id(state.db(), id).await
         {
@@ -90,7 +110,7 @@ async fn delete(req: Request<Body>, state: State) -> HttpResult<Box<dyn erased_s
                 if game.board.is_complete()
                 {
                     complete_game(state.db(), id).await.unwrap();
-                    HttpResult::Ok(Box::new(()))
+                    HttpResult::new(HttpResult::Ok, ())
                 }
                 else
                 {
@@ -111,6 +131,14 @@ enum Query
     User(ObjectId),
 }
 
+
+/*
+ * Every URL starts with q=
+ *     user(<id>) gets all the users (ongoing) games
+ *     all        fetches all games
+ *     old        fetches all COMPLETE games
+ *     <id>       fetches the game with the corresponding id
+ */
 use std::str::FromStr;
 impl FromStr for Query
 {
