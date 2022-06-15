@@ -131,7 +131,7 @@ pub async fn create_game(db: Database, user_id: ObjectId) -> DatabaseResult<Obje
     let user = doc! { "_id": &user_id };
 
     let id = ObjectId::new();
-    let update = doc! { "$push": { "create_games": id.clone() } };
+    let update = doc! { "$push": { "create_games": id } };
 
     match col.update_one(user, update, None).await
     {
@@ -193,8 +193,8 @@ pub async fn accept_game(db: Database, form: CreateGameFormResponse) -> Database
     let players = if byte[0] >= 128 { [creator, user] } else { [user, creator] };
 
     let (u1, u2) = tokio::join!(
-        find_user_by_id(db.clone(), players[0].clone()),
-        find_user_by_id(db.clone(), players[1].clone())
+        find_user_by_id(db.clone(), players[0]),
+        find_user_by_id(db.clone(), players[1])
     );
     let users = [u1?, u2?];
 

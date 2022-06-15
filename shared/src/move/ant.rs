@@ -41,9 +41,9 @@ pub fn _ant_move(board: &Board, sq: Square, dirs: [Square; 6], res: &mut Vec<Squ
             // we want to make the piece to 'hug the left wall'. These
             // functions (hopefully) avoids jumping between paralell structures
             let follows_path =
-                square_has_neighbors(sq, &board, org) && common_neighbors(current, sq);
+                square_has_neighbors(sq, board, org) && common_neighbors(current, sq);
 
-            if not_prev_pos && empty_square && follows_path && can_fit(current, sq, &board)
+            if not_prev_pos && empty_square && follows_path && can_fit(current, sq, board)
             {
                 next = Some(sq);
                 current = sq;

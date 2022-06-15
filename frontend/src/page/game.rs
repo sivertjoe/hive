@@ -471,7 +471,7 @@ pub fn grid(model: &Model) -> Node<crate::Msg> {
             C!("board"),
             view_board(model),
             IF!(model.piece.is_some() => {
-                model.piece.as_ref().unwrap().node(&model)
+                model.piece.as_ref().unwrap().node(model)
             })
         ],
     ]

@@ -95,13 +95,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             Err(e) => model.label = Some(e),
         },
 
-        Msg::FetchedUsersGames(text) => match parse_resp(text) {
-            Ok(resp) => {
+        Msg::FetchedUsersGames(text) => {
+            if let Ok(resp) = parse_resp(text) {
                 let games: Vec<OnGoingGame> = resp.get_body();
                 model.users_games = games;
             }
-            Err(_) => {}
-        },
+        }
 
         Msg::FetchedCreateGame(Ok(text)) => match serde_json::from_str::<ResponseBody>(&text) {
             Ok(resp) => match resp.status {

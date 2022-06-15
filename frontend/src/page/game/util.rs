@@ -136,12 +136,12 @@ pub fn get_color(game: &GameResource) -> Option<Color> {
 
 pub fn grid_from_board(model: &mut Model) {
     let board = &model.game.as_ref().unwrap().board;
-    let mut grid = &mut model.gridv3;
+    let grid = &mut model.gridv3;
 
-    grid_from_board_(&mut grid, &board);
+    grid_from_board_(grid, board);
 }
 
-pub fn grid_from_board_(grid: &mut Vec<Hex>, board: &Board) {
+pub fn grid_from_board_(grid: &mut [Hex], board: &Board) {
     for hex in grid.iter_mut() {
         hex.pieces.clear();
     }

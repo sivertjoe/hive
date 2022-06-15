@@ -81,7 +81,7 @@ impl<T> CorsExt for Response<T>
 
 pub async fn get_body<T: serde::de::DeserializeOwned>(req: Request<Body>) -> Option<T>
 {
-    let body = body::to_bytes(req.into_body()).await.unwrap();
+    let body = body::to_bytes(req.into_body()).await.ok()?;
     let s = std::str::from_utf8(&body).ok()?;
     serde_json::from_str::<T>(s).ok()
 }
@@ -102,7 +102,7 @@ fn log_resp(resp: &HttpResult, time: std::time::Duration) -> String
     {
         HttpResult::Ok(_) => format!("200 OK\t{}", time.as_secs_f32()),
         HttpResult::Create(_) => format!("201 Create\t{}", time.as_secs_f32()),
-        HttpResult::Err(e) => format!("{} {:?}\t{}", error_code(&e), e, time.as_secs_f32()),
+        HttpResult::Err(e) => format!("{} {:?}\t{}", error_code(e), e, time.as_secs_f32()),
     }
 }
 
@@ -119,19 +119,18 @@ fn error_code(e: &HttpError) -> u32
     }
 }
 
-impl Into<Response<Body>> for HttpResult
+impl From<HttpResult> for Response<Body>
 {
-    fn into(self) -> Response<Body>
+    fn from(http_res: HttpResult) -> Self
     {
-        fn f(code: u32, t: &dyn erased_serde::Serialize) -> Response<Body>
-        {
+        let f = |code: u32, t: &dyn erased_serde::Serialize| -> Response<Body> {
             Response::new(Body::from(ResponseBody::to_body(
                 code,
                 serde_json::to_string(&t).unwrap(),
             )))
-        }
+        };
 
-        match self
+        match http_res
         {
             HttpResult::Ok(t) => f(200, &t),
             HttpResult::Create(t) => f(201, &t),
@@ -139,6 +138,7 @@ impl Into<Response<Body>> for HttpResult
         }
     }
 }
+
 
 async fn handle_request(req: Request<Body>, state: State) -> Response<Body>
 {
